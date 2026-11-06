@@ -27,6 +27,7 @@ public class ValidadorMatriz {
     /**
      * Comprueba si algún elemento en la diagonal principal es prácticamente nulo (cercano a 0).
      * Requisito de alerta para métodos iterativos (Jacobi, Gauss-Seidel) donde se divide por A[i][i].
+     * Nota: una matriz no cuadrada devuelve {@code true} (se trata como no apta/usable por todos los llamadores).
      */
     public static boolean tieneCerosEnDiagonal(Matriz matriz) {
         if (!esCuadrada(matriz)) {
@@ -91,20 +92,24 @@ public class ValidadorMatriz {
 
     /**
      * Validación de matriz definida positiva (Requisito fundamental para Cholesky).
-     * Aplica el Criterio de Sylvester:
-     * 1. La matriz debe ser simétrica (A = A^T).
-     * 2. Todos los menores principales líderes (submatrices de orden 1 hasta n)
-     *    deben tener determinantes estrictamente positivos (Delta_k > 0).
+     * <p>Para una matriz simétrica, los pivotes de la eliminación sin pivoteo
+     * cumplen {@code p_k = Δ_k / Δ_{k-1}}. Por tanto {@code p_k > 0} para
+     * todo k es equivalente al Criterio de Sylvester {@code Δ_k > 0} para
+     * todo k, pero en O(n^3) en lugar de O(n^4).</p>
+     * <p>Requisitos: la matriz debe ser simétrica (A = A^T) y todos los
+     * pivotes deben ser estrictamente positivos.</p>
      */
     public static boolean esDefinidaPositiva(Matriz matriz) {
         if (!esSimetrica(matriz)) {
             return false;
         }
 
-        int n = matriz.getF();
-        for (int k = 1; k <= n; k++) {
-            Matriz submatriz = matriz.submatrizPrincipal(k);
-            if (submatriz.determinante() <= TOLERANCIA) {
+        double[] pivotes = pivotesSinPivoteo(matriz);
+        if (pivotes == null) {
+            return false;
+        }
+        for (double pivote : pivotes) {
+            if (pivote <= TOLERANCIA) {
                 return false;
             }
         }
@@ -113,22 +118,21 @@ public class ValidadorMatriz {
 
     /**
      * Comprueba si la matriz es apta para factorización LU / Crout sin pivoteo.
-     * Requiere que todos sus menores principales líderes sean no singulares:
-     * det(A_k) != 0 para k = 1, 2, ..., n.
+     * <p>Una matriz admite factorización LU sin pivoteo si y solo si todos
+     * sus menores principales líderes son no nulos; esto es equivalente a
+     * que la eliminación sin pivoteo no encuentre ningún pivote nulo.
+     * La verificación se realiza en O(n^3) mediante
+     * {@link #pivotesSinPivoteo(Matriz)} en lugar de calcular los k
+     * determinantes de las submatrices principales.</p>
+     *
+     * @return {@code false} si la matriz no es cuadrada o algún pivote es
+     *          prácticamente nulo; {@code true} en caso contrario
      */
     public static boolean esAptaParaLU(Matriz matriz) {
         if (!esCuadrada(matriz)) {
             return false;
         }
-
-        int n = matriz.getF();
-        for (int k = 1; k <= n; k++) {
-            Matriz submatriz = matriz.submatrizPrincipal(k);
-            if (Math.abs(submatriz.determinante()) < TOLERANCIA) {
-                return false;
-            }
-        }
-        return true;
+        return pivotesSinPivoteo(matriz) != null;
     }
 
     /**
@@ -139,5 +143,48 @@ public class ValidadorMatriz {
             return false;
         }
         return Math.abs(matriz.determinante()) > TOLERANCIA;
+    }
+
+    /**
+     * Eliminación gaussiana SIN pivoteo.
+     * Devuelve los pivotes de la diagonal en un arreglo de longitud n.
+     * Si en alguna etapa el pivote es prácticamente nulo, devuelve null
+     * (la factorización no existe sin pivoteo).
+     *
+     * <p>Complejidad: O(n^3). La matriz de entrada no se modifica; se
+     * trabaja sobre una copia interna. Precondición: la matriz debe ser
+     * cuadrada (la garantizan los llamadores).</p>
+     *
+     * @param matriz matriz cuadrada de entrada
+     * @return los pivotes de la diagonal, o {@code null} si la eliminación
+     *          falla por un pivote prácticamente nulo
+     */
+    private static double[] pivotesSinPivoteo(Matriz matriz) {
+        int n = matriz.getF();
+        double[][] a = new double[n][n];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                a[i][j] = matriz.getEleMatriz(i, j);
+            }
+        }
+
+        for (int k = 0; k < n; k++) {
+            if (Math.abs(a[k][k]) < TOLERANCIA) {
+                return null;
+            }
+            for (int i = k + 1; i < n; i++) {
+                double factor = a[i][k] / a[k][k];
+                a[i][k] = 0.0;
+                for (int j = k + 1; j < n; j++) {
+                    a[i][j] -= factor * a[k][j];
+                }
+            }
+        }
+
+        double[] pivotes = new double[n];
+        for (int i = 0; i < n; i++) {
+            pivotes[i] = a[i][i];
+        }
+        return pivotes;
     }
 }

@@ -1,6 +1,21 @@
 package unsa.sistemas.model.matrix;
 
 public class Matriz {
+
+    /**
+     * Umbral de singularidad de pivote utilizado en {@link #determinante()}.
+     * Si el pivote máximo de una etapa de la eliminación es menor que este
+     * valor, la matriz se considera singular y el determinante se devuelve
+     * como 0.0.
+     *
+     * <p>Es una tolerancia de <b>singularidad de pivote</b> y es
+     * intencionalmente distinta de {@code ValidadorMatriz.TOLERANCIA}
+     * (1e-9), que es una tolerancia de <b>igualdad</b> para comparar
+     * determinantes y simetría. No unificarlas: cumplen funciones
+     * distintas.</p>
+     */
+    private static final double TOLERANCIA_PIVOTE = 1e-12;
+
     private double[][] matriz;
     private int f, c;
 
@@ -8,26 +23,43 @@ public class Matriz {
         return f;
     }
 
-    public void setF(int f) {
-        this.f = f;
-    }
-
     public int getC() {
         return c;
     }
 
-    public void setC(int c) {
-        this.c = c;
-    }
-
+    /**
+     * Construye una matriz a partir de un arreglo 2D.
+     * Realiza una copia profunda de los datos: mutaciones posteriores del
+     * arreglo del llamador no afectan a esta matriz.
+     *
+     * @param m arreglo 2D rectangular (todas las filas deben tener la misma
+     *          longitud); se acepta {@code null} o un arreglo vacío, que se
+     *          convierten en una matriz 0x0
+     * @throws IllegalArgumentException si las filas tienen longitudes
+     *          distintas (matriz irregular)
+     */
     public Matriz(double[][] m) {
-        this.matriz = m;
-        if (m != null && m.length > 0) {
-            this.f = m.length;
-            this.c = m[0].length;
-        } else {
+        if (m == null || m.length == 0) {
             this.f = 0;
             this.c = 0;
+            this.matriz = new double[0][0];
+            return;
+        }
+        if (m[0] == null) {
+            throw new IllegalArgumentException("Matriz irregular: la fila 0 es nula.");
+        }
+        int numColumnas = m[0].length;
+        this.f = m.length;
+        this.c = numColumnas;
+        this.matriz = new double[f][c];
+        for (int i = 0; i < f; i++) {
+            if (m[i] == null || m[i].length != numColumnas) {
+                int columnasFila = (m[i] == null) ? 0 : m[i].length;
+                throw new IllegalArgumentException(
+                        "Matriz irregular: la fila " + i + " tiene " + columnasFila
+                                + " columnas, se esperaban " + numColumnas + ".");
+            }
+            this.matriz[i] = m[i].clone();
         }
     }
 
@@ -38,56 +70,59 @@ public class Matriz {
     }
 
     public Matriz() {
-        this.matriz = null;
+        this.matriz = new double[0][0];
         this.f = 0;
         this.c = 0;
     }
 
+    /**
+     * Devuelve el arreglo 2D interno de la matriz.
+     * <b>Advertencia:</b> es la matriz interna, no una copia; los llamadores
+     * no deben modificarlo directamente, porque rompería los invariantes de
+     * dimensiones de esta clase. Para una copia propia usar {@link #clonar()}.
+     *
+     * @return el arreglo interno (sin copiar)
+     */
     public double[][] getMatriz() {
         return matriz;
     }
 
-    public void setMatriz(double[][] matriz) {
-        this.matriz = matriz;
-        if (matriz != null && matriz.length > 0) {
-            this.f = matriz.length;
-            this.c = matriz[0].length;
-        } else {
-            this.f = 0;
-            this.c = 0;
-        }
-    }
-
+    /**
+     * Devuelve el elemento de la posición indicada.
+     *
+     * @param fila    índice de fila (base 0)
+     * @param columna índice de columna (base 0)
+     * @return el elemento en (fila, columna)
+     * @throws IndexOutOfBoundsException si los índices están fuera del rango
+     *          válido de la matriz
+     */
     public double getEleMatriz(int fila, int columna) {
-        if (fila >= 0 && fila < getF() && columna >= 0 && columna < getC()) {
-            return this.matriz[fila][columna];
-        } else {
-            return 0;
+        if (fila < 0 || fila >= getF() || columna < 0 || columna >= getC()) {
+            throw new IndexOutOfBoundsException(
+                    "Índice fuera de rango: fila=" + fila + ", columna=" + columna
+                            + ". Rango válido: fila en [0, " + (getF() - 1)
+                            + "], columna en [0, " + (getC() - 1) + "].");
         }
+        return this.matriz[fila][columna];
     }
 
+    /**
+     * Asigna el elemento en la posición indicada.
+     *
+     * @param ele     valor a asignar
+     * @param fila    índice de fila (base 0)
+     * @param columna índice de columna (base 0)
+     * @throws IndexOutOfBoundsException si los índices están fuera del rango
+     *          válido de la matriz
+     */
     public void setEleMatriz(double ele, int fila, int columna) {
-        if (fila >= 0 && fila < getF() && columna >= 0 && columna < getC()) {
-            this.matriz[fila][columna] = ele;
+        if (fila < 0 || fila >= getF() || columna < 0 || columna >= getC()) {
+            throw new IndexOutOfBoundsException(
+                    "Índice fuera de rango: fila=" + fila + ", columna=" + columna
+                            + ". Rango válido: fila en [0, " + (getF() - 1)
+                            + "], columna en [0, " + (getC() - 1) + "].");
         }
-    }
-
-    public void productoMatrices(Matriz A, Matriz B) {
-        if (A != null && B != null && A.getC() == B.getF()) {
-            this.f = A.getF();
-            this.c = B.getC();
-            this.matriz = new double[this.f][this.c];
-
-            for (int i = 0; i < this.f; i++) {
-                for (int j = 0; j < this.c; j++) {
-                    double suma = 0.0;
-                    for (int k = 0; k < A.getC(); k++) {
-                        suma += A.getEleMatriz(i, k) * B.getEleMatriz(k, j);
-                    }
-                    this.matriz[i][j] = suma;
-                }
-            }
-        }
+        this.matriz[fila][columna] = ele;
     }
 
     // Mejora 1: Multiplicación que devuelve una nueva Matriz
@@ -193,7 +228,7 @@ public class Matriz {
                 }
             }
 
-            if (maxVal < 1e-12) {
+            if (maxVal < TOLERANCIA_PIVOTE) {
                 return 0.0;
             }
 
