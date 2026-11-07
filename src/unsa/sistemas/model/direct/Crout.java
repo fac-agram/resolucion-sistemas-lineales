@@ -1,17 +1,30 @@
 package unsa.sistemas.model.direct;
 
-public class Crout {
-    protected double[][] A;
-    protected double[] b;
-    protected int n;
+import unsa.sistemas.model.Resolutor;
+import unsa.sistemas.model.trace.Traza;
 
-    public Crout(double[][] A, double[] b, int n) {
-        this.n = n;
-        this.A = new double[n][n];
-        for (int i = 0; i < n; i++) this.A[i] = A[i].clone();
-        this.b = b.clone();
+public class Crout extends Resolutor implements ResolutorDirecto {
+
+    public Crout(double[][] A, double[] b) {
+        super(A, b);
     }
 
+    public Crout(double[][] A, double[] b, Traza traza) {
+        super(A, b, traza);
+    }
+
+    /**
+     * TODO (equipo): implementar la factorización LU de Crout
+     * (L unitaria inferior, U superior) con sustituciones.
+     *
+     * <p>Las precondiciones del método (menores principales no nulos /
+     * aptitud para LU sin pivoteo) deben validarse DENTRO de este
+     * método según el contrato de {@link ResolutorDirecto}: el
+     * controlador ya no las valida antes de invocar al resolutor.</p>
+     *
+     * @return {@code null} mientras el algoritmo no esté implementado
+     */
+    @Override
     public double[] resolver() {
         return null; // TODO: implementar
     }

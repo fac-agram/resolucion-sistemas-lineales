@@ -44,6 +44,33 @@ public abstract class Resolutor {
     }
 
     /**
+     * Constructor sin trazado que deduce el orden de la matriz.
+     * Los métodos directos lo usan para no recibir {@code n} explícito.
+     *
+     * @param A matriz de coeficientes n x n
+     * @param b vector de términos independientes de longitud n
+     * @throws IllegalArgumentException si A, b son null, n <= 0 o las
+     *         dimensiones no coinciden
+     */
+    protected Resolutor(double[][] A, double[] b) {
+        this(A, b, A == null ? 0 : A.length, null);
+    }
+
+    /**
+     * Constructor con trazado opcional que deduce el orden de la matriz.
+     *
+     * @param A     matriz de coeficientes n x n
+     * @param b     vector de términos independientes de longitud n
+     * @param traza traza a ir llenando durante la ejecución,
+     *              o {@code null} para no trazar
+     * @throws IllegalArgumentException si A, b son null, n <= 0 o las
+     *         dimensiones no coinciden
+     */
+    protected Resolutor(double[][] A, double[] b, Traza traza) {
+        this(A, b, A == null ? 0 : A.length, traza);
+    }
+
+    /**
      * Constructor con trazado opcional.
      *
      * @param A     matriz de coeficientes n x n
@@ -90,4 +117,20 @@ public abstract class Resolutor {
     public Traza getTraza() {
         return traza;
     }
+
+    /**
+     * Resuelve el sistema Ax = b y devuelve el vector solución.
+     *
+     * <p>Las implementaciones directas e iterativas lanzan
+     * {@link IllegalArgumentException} —con mensaje en español— cuando
+     * no se cumplen sus precondiciones (singularidad, simetría,
+     * definición positiva, ceros en la diagonal, etc.). Un método
+     * iterativo que no converge devuelve la última aproximación sin
+     * lanzar excepción.</p>
+     *
+     * @return el vector solución x de longitud n
+     * @throws IllegalArgumentException si no se cumplen las precondiciones
+     *         del método
+     */
+    public abstract double[] resolver();
 }
