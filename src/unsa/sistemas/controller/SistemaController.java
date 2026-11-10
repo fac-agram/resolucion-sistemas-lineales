@@ -64,10 +64,10 @@ public class SistemaController {
 
     /** Registro identificador de método → fábrica del resolutor. */
     private static final Map<String, FactoriaResolutor> registro = Map.of(
-            GAUSS,        (A, b, n, t) -> new EliminacionGaussiana(A, b, t),
-            GAUSS_JORDAN, (A, b, n, t) -> new GaussJordan(A, b, t),
-            CROUT,        (A, b, n, t) -> new Crout(A, b, t),
-            CHOLESKY,     (A, b, n, t) -> new Cholesky(A, b, t),
+            GAUSS,        (A, b, n, t) -> new EliminacionGaussiana(A, b, n, t),
+            GAUSS_JORDAN, (A, b, n, t) -> new GaussJordan(A, b, n, t),
+            CROUT,        (A, b, n, t) -> new Crout(A, b, n, t),
+            CHOLESKY,     (A, b, n, t) -> new Cholesky(A, b, n, t),
             JACOBI,       (A, b, n, t) -> new Jacobi(A, b, n, t),
             GAUSS_SEIDEL, (A, b, n, t) -> new GaussSeidel(A, b, n, t),
             SOR_METODO,   (A, b, n, t) -> new SOR(A, b, n, t),

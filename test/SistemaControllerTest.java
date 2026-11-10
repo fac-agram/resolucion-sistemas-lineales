@@ -34,7 +34,17 @@ public class SistemaControllerTest {
         verificaMetodoDesconocido();
         verificaMetodoNulo();
         verificaJacobiSinDominanciaDiagonal();
+
         verificaGaussDirecto();
+        verificaGaussJordan();
+        verificaCrout();
+        verificaCholesky();
+
+        verificaGaussSingular();
+        verificaGaussJordanSingular();
+        verificaCroutPivoteNulo();
+        verificaCholeskyNoSimetrica();
+        verificaCholeskyNoDefinidaPositiva();
 
         System.out.println(ok ? "TEST_OK" : "TEST_FALLO");
         System.exit(ok ? 0 : 1);
@@ -150,14 +160,22 @@ public class SistemaControllerTest {
      * con el mensaje de método no implementado y sin convergencia.
      */
     private static void verificaGaussDirecto() {
-        SistemaController c = new SistemaController();
-        Resultado r = c.resolver(A_CANONICA, B_CANONICA, SistemaController.GAUSS);
+    SistemaController c = new SistemaController();
+    Resultado r = c.resolver(A_CANONICA, B_CANONICA, SistemaController.GAUSS);
 
-        chequea("gauss sin exito (stub)", !r.isExitoso());
-        chequea("gauss mensaje de no implementado",
-                r.getMensaje() != null && r.getMensaje().contains("implementado"));
-        chequea("gauss sin convergencia (no iterativo)", r.getConvergencia() == null);
+    chequea("gauss exito", r.isExitoso());
+
+    double[] esperado = {0.8, 1.4};
+    comparaVector("gauss solucion", r.getSolucion(), esperado);
+
+    chequea("gauss traza no nula", r.getTraza() != null);
+    if (r.getTraza() != null) {
+        chequea("gauss traza con pasos", r.getTraza().totalPasos() > 0);
     }
+
+    chequea("gauss sin convergencia (no iterativo)",
+            r.getConvergencia() == null);
+}
 
     // ── mini-framework de aserciones (sin dependencias) ──
 
@@ -188,4 +206,173 @@ public class SistemaControllerTest {
             ok = false;
         }
     }
+    private static void verificaGaussJordan() {
+    SistemaController c = new SistemaController();
+
+    double[][] A = {
+        {4, 2, 2},
+        {2, 5, 1},
+        {2, 1, 3}
+    };
+
+    double[] b = {14, 15, 13};
+
+    Resultado r = c.resolver(A, b, SistemaController.GAUSS_JORDAN);
+
+    chequea("gauss-jordan exito", r.isExitoso());
+
+    if (r.isExitoso()) {
+        double[] esperado = {1, 2, 3};
+        comparaVector("gauss-jordan solucion", r.getSolucion(), esperado);
+
+        chequea("gauss-jordan traza no nula", r.getTraza() != null);
+
+        if (r.getTraza() != null) {
+            chequea("gauss-jordan traza con pasos",
+                    r.getTraza().totalPasos() > 0);
+        }
+    }
+
+    chequea("gauss-jordan sin convergencia", r.getConvergencia() == null);
+}
+private static void verificaCrout() {
+    SistemaController c = new SistemaController();
+
+    double[][] A = {
+        {4, 2, 2},
+        {2, 5, 1},
+        {2, 1, 3}
+    };
+
+    double[] b = {14, 15, 13};
+
+    Resultado r = c.resolver(A, b, SistemaController.CROUT);
+
+    chequea("crout exito", r.isExitoso());
+
+    if (r.isExitoso()) {
+        double[] esperado = {1, 2, 3};
+        comparaVector("crout solucion", r.getSolucion(), esperado);
+
+        chequea("crout traza no nula", r.getTraza() != null);
+
+        if (r.getTraza() != null) {
+            chequea("crout traza con pasos",
+                    r.getTraza().totalPasos() > 0);
+        }
+    }
+
+    chequea("crout sin convergencia", r.getConvergencia() == null);
+}
+private static void verificaCholesky() {
+    SistemaController c = new SistemaController();
+
+    double[][] A = {
+        {4, 2, 2},
+        {2, 5, 1},
+        {2, 1, 3}
+    };
+
+    double[] b = {14, 15, 13};
+
+    Resultado r = c.resolver(A, b, SistemaController.CHOLESKY);
+
+    chequea("cholesky exito", r.isExitoso());
+
+    if (r.isExitoso()) {
+        double[] esperado = {1, 2, 3};
+        comparaVector("cholesky solucion", r.getSolucion(), esperado);
+
+        chequea("cholesky traza no nula", r.getTraza() != null);
+
+        if (r.getTraza() != null) {
+            chequea("cholesky traza con pasos",
+                    r.getTraza().totalPasos() > 0);
+        }
+    }
+
+    chequea("cholesky sin convergencia", r.getConvergencia() == null);
+}
+private static void verificaGaussSingular() {
+    SistemaController c = new SistemaController();
+
+    double[][] A = {
+        {1, 2},
+        {2, 4}
+    };
+
+    double[] b = {3, 6};
+
+    Resultado r = c.resolver(A, b, SistemaController.GAUSS);
+
+    chequea("gauss singular sin exito", !r.isExitoso());
+    chequea("gauss singular mensaje no nulo", r.getMensaje() != null);
+    chequea("gauss singular sin convergencia", r.getConvergencia() == null);
+}
+private static void verificaGaussJordanSingular() {
+    SistemaController c = new SistemaController();
+
+    double[][] A = {
+        {1, 2},
+        {2, 4}
+    };
+
+    double[] b = {3, 6};
+
+    Resultado r = c.resolver(A, b, SistemaController.GAUSS_JORDAN);
+
+    chequea("gauss-jordan singular sin exito", !r.isExitoso());
+    chequea("gauss-jordan singular mensaje no nulo", r.getMensaje() != null);
+    chequea("gauss-jordan singular sin convergencia", r.getConvergencia() == null);
+}
+private static void verificaCroutPivoteNulo() {
+    SistemaController c = new SistemaController();
+
+    double[][] A = {
+        {0, 1},
+        {1, 2}
+    };
+
+    double[] b = {1, 3};
+
+    Resultado r = c.resolver(A, b, SistemaController.CROUT);
+
+    chequea("crout pivote nulo sin exito", !r.isExitoso());
+    chequea("crout pivote nulo mensaje no nulo", r.getMensaje() != null);
+    chequea("crout pivote nulo sin convergencia", r.getConvergencia() == null);
+}
+private static void verificaCholeskyNoSimetrica() {
+    SistemaController c = new SistemaController();
+
+    double[][] A = {
+        {4, 2},
+        {3, 5}
+    };
+
+    double[] b = {6, 8};
+
+    Resultado r = c.resolver(A, b, SistemaController.CHOLESKY);
+
+    chequea("cholesky no simetrica sin exito", !r.isExitoso());
+    chequea("cholesky no simetrica mensaje no nulo", r.getMensaje() != null);
+    chequea("cholesky no simetrica sin convergencia", r.getConvergencia() == null);
+}
+private static void verificaCholeskyNoDefinidaPositiva() {
+    SistemaController c = new SistemaController();
+
+    double[][] A = {
+        {1, 2},
+        {2, 1}
+    };
+
+    double[] b = {3, 3};
+
+    Resultado r = c.resolver(A, b, SistemaController.CHOLESKY);
+
+    chequea("cholesky no definida positiva sin exito", !r.isExitoso());
+    chequea("cholesky no definida positiva mensaje no nulo", r.getMensaje() != null);
+    chequea("cholesky no definida positiva sin convergencia", r.getConvergencia() == null);
+}
+
+
 }
