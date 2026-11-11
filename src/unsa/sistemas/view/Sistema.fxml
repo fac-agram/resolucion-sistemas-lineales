@@ -45,8 +45,18 @@
                 <TextArea fx:id="areaSistema" editable="false" prefRowCount="5" promptText="Aquí aparecerán las ecuaciones..." wrapText="true" VBox.vgrow="ALWAYS" />
 
                 <Label text="Forma matricial" />
-
-                <TextArea fx:id="areaFormaMatricial" editable="false" prefRowCount="6" promptText="Aquí aparecerán la matriz A y el vector b..." wrapText="false" VBox.vgrow="ALWAYS" />
+                <HBox alignment="TOP_CENTER" spacing="15">
+                <!-- MATRIZ A -->
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label text="Matriz A" />
+                <TextArea fx:id="areaMatrizA" editable="false" prefHeight="111.0" prefRowCount="6" prefWidth="269.0" promptText="Matriz de coeficientes..." wrapText="false" VBox.vgrow="ALWAYS" />
+                  </VBox>
+                  <!-- VECTOR B -->
+                  <VBox spacing="5" HBox.hgrow="ALWAYS">
+                  <Label text="Vector b" />
+                  <TextArea fx:id="areaVectorB" editable="false" prefColumnCount="8" prefHeight="111.0" prefRowCount="6" prefWidth="57.0" promptText="Términos independientes..." wrapText="false" VBox.vgrow="ALWAYS" />
+                  </VBox>
+                  </HBox>
 
                 <Label text="Tipo de método" />
                 <ComboBox fx:id="comboTipoMetodo" maxWidth="Infinity" promptText="Seleccionar tipo de método" />

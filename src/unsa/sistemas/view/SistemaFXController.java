@@ -1,5 +1,9 @@
 package unsa.sistemas.view;
 
+import unsa.sistemas.controller.SistemaController;
+import unsa.sistemas.model.trace.Paso;
+import unsa.sistemas.model.trace.Traza;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +30,10 @@ public class SistemaFXController {
     private TextArea areaSistema;
 
     @FXML
-    private TextArea areaFormaMatricial;
+    private TextArea areaMatrizA;
+    
+    @FXML
+    private TextArea areaVectorB;
 
     @FXML
     private ComboBox<String> comboTipoMetodo;
@@ -43,6 +50,8 @@ public class SistemaFXController {
     // Datos del sistema cargado
     private double[][] matrizA;
     private double[] vectorB;
+
+    private final SistemaController sistemaController = new SistemaController();
 
     @FXML
     public void initialize() {
@@ -298,34 +307,34 @@ public class SistemaFXController {
 
     private void mostrarFormaMatricial() {
 
-        StringBuilder texto = new StringBuilder();
+    // Construir la representación de la matriz A
+    StringBuilder textoMatriz = new StringBuilder();
 
-        texto.append("Matriz A:\n");
+    for (double[] fila : matrizA) {
 
-        for (double[] fila : matrizA) {
+        textoMatriz.append("[ ");
 
-            texto.append("[ ");
-
-            for (double valor : fila) {
-                texto.append(formatear(valor)).append("  ");
-            }
-
-            texto.append("]\n");
+        for (double valor : fila) {
+            textoMatriz.append(formatear(valor)).append("  ");
         }
 
-        texto.append("\nVector b:\n");
-
-        for (double valor : vectorB) {
-
-            texto.append("[ ")
-                 .append(formatear(valor))
-                 .append(" ]\n");
-        }
-
-        texto.append("\nSistema: A · x = b");
-
-        areaFormaMatricial.setText(texto.toString());
+        textoMatriz.append("]\n");
     }
+
+    // Construir la representación del vector b
+    StringBuilder textoVector = new StringBuilder();
+
+    for (double valor : vectorB) {
+
+        textoVector.append("[ ")
+                   .append(formatear(valor))
+                   .append(" ]\n");
+    }
+
+    // Mostrar cada estructura en su propio TextArea
+    areaMatrizA.setText(textoMatriz.toString());
+    areaVectorB.setText(textoVector.toString());
+}
 
     // ==========================================
     // FORMATEAR NÚMEROS
@@ -333,48 +342,234 @@ public class SistemaFXController {
 
     private String formatear(double valor) {
 
-        if (valor == 0.0) {
-            return "0";
-        }
+    if (Double.isNaN(valor)) {
+        return "NaN";
+    }
 
-        return BigDecimal.valueOf(valor)
+    if (Double.isInfinite(valor)) {
+        return valor > 0 ? "Infinity" : "-Infinity";
+    }
+
+    if (valor == 0.0) {
+        return "0";
+    }
+
+    return BigDecimal.valueOf(valor)
             .stripTrailingZeros()
             .toPlainString();
-    }
+}
 
     // ==========================================
     // RESOLVER SISTEMA
     // ==========================================
 
+    private String obtenerMetodoSeleccionado() {
+
+    return switch (comboMetodo.getValue()) {
+
+        // Métodos directos
+        case "Eliminación Gaussiana" -> SistemaController.GAUSS;
+        case "Gauss-Jordan" -> SistemaController.GAUSS_JORDAN;
+        case "Crout" -> SistemaController.CROUT;
+        case "Cholesky" -> SistemaController.CHOLESKY;
+
+        // Métodos iterativos
+        case "Jacobi" -> SistemaController.JACOBI;
+        case "Gauss-Seidel" -> SistemaController.GAUSS_SEIDEL;
+        case "Relajación Simple" -> SistemaController.RELAJACION;
+        case "SOR" -> SistemaController.SOR_METODO;
+        case "Mejoramiento Iterativo" -> SistemaController.MEJORAMIENTO;
+
+        default -> null;
+    };
+}
+
     @FXML
     private void resolverSistema() {
-
+        // Verificar que exista un sistema cargado
         if (matrizA == null || vectorB == null) {
-
-            labelEstado.setText(
-                "Primero tenés que cargar un archivo TXT."
-            );
-
+            labelEstado.setText("Primero tenés que cargar un archivo TXT.");
             return;
         }
 
-        if (comboTipoMetodo.getValue() == null
-                || comboMetodo.getValue() == null) {
-
-            labelEstado.setText(
-                "Seleccioná el tipo y el método de resolución."
-            );
-
-            return;
-        }
-
-        // La conexión con SistemaController se implementará
-        // en la siguiente etapa.
-
-        labelEstado.setText(
-            "Sistema cargado. Próximamente se conectará el resolutor."
-        );
+    // Verificar que se haya seleccionado un método
+        if (comboTipoMetodo.getValue() == null|| comboMetodo.getValue() == null) {
+        labelEstado.setText(    "Seleccioná el tipo y el método de resolución.");
+        return;
     }
+
+    // Obtener el identificador correspondiente
+    String metodo = obtenerMetodoSeleccionado();
+
+    if (metodo == null) {
+        labelEstado.setText("Método de resolución no reconocido.");
+        return;
+    }
+
+    // Enviar los datos al controlador matemático.
+    // Se utilizan copias para conservar los datos originales.
+    double[][] matrizCopia = copiarMatriz(matrizA);
+    double[] vectorCopia = vectorB.clone();
+    SistemaController.Resultado resultado = sistemaController.resolver(matrizCopia, vectorCopia, metodo);
+    // Mostrar el resultado
+    mostrarResultado(resultado);
+
+    }
+    private double[][] copiarMatriz(double[][] matriz) {
+
+    double[][] copia = new double[matriz.length][];
+
+    for (int i = 0; i < matriz.length; i++) {
+        copia[i] = matriz[i].clone();
+    }
+
+    return copia;
+}
+    private void mostrarResultado(SistemaController.Resultado resultado) {
+
+    StringBuilder texto = new StringBuilder();
+
+    // Si ocurrió un error
+    if (!resultado.isExitoso()) {
+
+        texto.append("NO SE PUDO RESOLVER EL SISTEMA\n\n");
+        texto.append(resultado.getMensaje());
+
+        areaResultado.setText(texto.toString());
+
+        labelEstado.setText("Error durante la resolución.");
+
+        return;
+    }
+
+    // Mostrar la solución
+    texto.append("SOLUCIÓN DEL SISTEMA\n\n");
+
+    double[] solucion = resultado.getSolucion();
+
+    for (int i = 0; i < solucion.length; i++) {
+
+        texto.append("x")
+             .append(i + 1)
+             .append(" = ")
+             .append(formatear(solucion[i]))
+             .append("\n");
+    }
+
+    // Mostrar información del método
+    texto.append("\nMétodo utilizado: ")
+         .append(resultado.getMetodoUsado());
+
+    texto.append("\n\n")
+         .append(resultado.getMensaje());
+
+    // Mostrar información adicional si es iterativo
+    SistemaController.Convergencia convergencia =
+        resultado.getConvergencia();
+
+    if (convergencia != null) {
+
+        texto.append("\n\nINFORMACIÓN DE CONVERGENCIA");
+
+        texto.append("\nIteraciones: ")
+             .append(convergencia.iteraciones());
+
+        texto.append("\nError final: ")
+             .append(formatear(convergencia.errorFinal()));
+
+        texto.append("\nConvergió: ")
+             .append(convergencia.convergio() ? "Sí" : "No");
+    }
+
+    // Agregar el procedimiento paso a paso
+    mostrarTraza(resultado.getTraza(), texto);
+    // Mostrar todo en la interfaz
+    areaResultado.setText(texto.toString());
+    labelEstado.setText(
+        resultado.isAdvertencia()
+            ? "Sistema resuelto con advertencias."
+            : "Sistema resuelto correctamente."
+    );
+}
+    
+    private void mostrarTraza(Traza traza, StringBuilder texto) {
+
+    if (traza == null || traza.estaVacia()) {
+        texto.append("\n\nNo hay pasos registrados.");
+        return;
+    }
+
+    texto.append("\n\n================================");
+    texto.append("\nPROCEDIMIENTO PASO A PASO");
+    texto.append("\n================================\n");
+
+    for (Paso paso : traza.getPasos()) {
+
+        texto.append("\n");
+
+        // Número del paso
+        if (paso.indice() > 0) {
+            texto.append("Paso ").append(paso.indice());
+        } else {
+            texto.append("Inicio");
+        }
+
+        texto.append("\n");
+        texto.append(paso.operacion()).append("\n");
+
+        // Mostrar matriz si existe
+        double[][] matriz = paso.matriz();
+
+        if (matriz != null) {
+
+            texto.append("\n");
+
+            for (double[] fila : matriz) {
+
+                texto.append("[ ");
+
+                for (int j = 0; j < fila.length; j++) {
+
+                    if (j == fila.length - 1) {
+                        texto.append("| ");
+                    }
+
+                    texto.append(formatear(fila[j])).append("  ");
+                }
+
+                texto.append("]\n");
+            }
+        }
+
+        // Mostrar vector solución si existe
+        double[] x = paso.x();
+
+        if (x != null) {
+
+            texto.append("\nSolución obtenida:\n");
+
+            for (int i = 0; i < x.length; i++) {
+
+                texto.append("x")
+                     .append(i + 1)
+                     .append(" = ")
+                     .append(formatear(x[i]))
+                     .append("\n");
+            }
+        }
+
+        // Mostrar error si corresponde
+        if (!Double.isNaN(paso.error())) {
+
+            texto.append("Error: ")
+                 .append(formatear(paso.error()))
+                 .append("\n");
+        }
+
+        texto.append("--------------------------------\n");
+    }
+}
+
 
     // ==========================================
     // LIMPIAR INTERFAZ
@@ -389,7 +584,8 @@ public class SistemaFXController {
         labelArchivo.setText("Ningún archivo seleccionado");
 
         areaSistema.clear();
-        areaFormaMatricial.clear();
+        areaMatrizA.clear();
+        areaVectorB.clear();
         areaResultado.clear();
 
         comboTipoMetodo.getSelectionModel().clearSelection();
