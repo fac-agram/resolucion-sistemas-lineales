@@ -4,17 +4,18 @@ Proyecto académico de la UNSA para resolver sistemas de ecuaciones lineales con
 
 ## Estado actual
 
-> **Importante:** el proyecto **aún no resuelve sistemas**. La infraestructura está lista, pero los algoritmos no.
+> **Importante:** el proyecto **compila y resuelve varios algoritmos**. Falta resolver varios casos específicos con varios algoritmos, pero el programa compila y devuelve resultados.
 
 | Componente | Estado |
 |---|---|
 | `Matriz`, `ValidadorMatriz`, `SistemaController` | ✅ Implementados y funcionales |
-| Las 9 clases de algoritmos (`Jacobi`, `Crout`, etc.) | 🔧 **Stub**: `resolver()` devuelve `null` |
+| Las 9 clases de algoritmos (`Jacobi`, `Crout`, etc.) | ✅ Implementados y funcionales |
 | `Main` / punto de entrada | ❌ No existe todavía |
-| `ConsoleView`, `Sustituciones`, `Normas`, `AnalisisSensibilidad` | ❌ Esqueletos vacíos (sin implementar) |
-| Tests | ❌ No hay |
+| `ConsoleView`, `Sustituciones`, `Normas`, `AnalisisSensibilidad` | Falta implementar Sustituciones |
+| Tests |  ✅ Implementado varios casos de prueba |
 
-Un lector no debe asumir que la aplicación se puede ejecutar hoy: **compila, pero no calcula soluciones**.
+Un lector no debe asumir que la aplicación se puede ejecutar hoy: **compila, pero falta corregir ciertos casos a la hora de ejecutar los algoritmos**.
+Para poder ejecutar el programa hay que ir a la clase "ConsoleView" y ejecutar el programa desde ahí
 
 ## Métodos soportados por la interfaz
 
