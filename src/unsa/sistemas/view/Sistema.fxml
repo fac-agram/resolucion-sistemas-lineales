@@ -8,6 +8,7 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.TitledPane?>
 
 <BorderPane prefHeight="750" prefWidth="1100" stylesheets="@estilos.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="unsa.sistemas.view.SistemaFXController">
 
@@ -36,6 +37,7 @@
 
                 <HBox alignment="CENTER_LEFT" spacing="10">
                     <Button onAction="#cargarArchivo" styleClass="boton-principal" text="Cargar archivo .txt" />
+                    <Button text="Ingresar manualmente" onAction="#cargarManual"/>
 
                     <Label fx:id="labelArchivo" text="Ningún archivo seleccionado" wrapText="true" />
                 </HBox>
@@ -69,17 +71,37 @@
 
                     <Button onAction="#limpiarCampos" text="Limpiar" />
                 </HBox>
-
-            </VBox>
-
-            <!-- PANEL DE RESULTADOS -->
+                </VBox>
+                <!-- PANEL DE RESULTADOS -->
             <VBox spacing="12" HBox.hgrow="ALWAYS">
 
                 <Label styleClass="titulo-seccion" text="Resultados" />
 
-                <Label text="Solución y procedimiento:" />
+                <Label text="Solución:" />
 
-                <TextArea fx:id="areaResultado" editable="false" promptText="Los resultados aparecerán aquí..." wrapText="true" VBox.vgrow="ALWAYS" />
+                <TextArea fx:id="areaResultado"
+                    editable="false"
+                    prefHeight="150"
+                    minHeight="120"
+                    promptText="Los resultados aparecerán aquí..."
+                    wrapText="true"
+                    VBox.vgrow="NEVER" />
+
+                    <TitledPane fx:id="paneProcedimiento"
+                        text="Ver procedimiento paso a paso"
+                        expanded="false"
+                        collapsible="true"
+                        disable="true"
+                        prefHeight="350"
+                        minHeight="220"
+                        VBox.vgrow="ALWAYS">
+                        <content>
+                            <TextArea fx:id="areaProcedimiento"
+                                editable="false"
+                                wrapText="true"
+                                promptText="Aquí aparecerán los pasos del procedimiento." />
+                        </content>
+                    </TitledPane>
 
             </VBox>
 

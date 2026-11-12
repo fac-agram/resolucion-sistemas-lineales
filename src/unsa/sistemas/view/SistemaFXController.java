@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import javafx.fxml.FXML;
 import javafx.stage.FileChooser;
@@ -19,6 +20,11 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TitledPane;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.layout.VBox;
 
 public class SistemaFXController {
 
@@ -43,6 +49,12 @@ public class SistemaFXController {
 
     @FXML
     private TextArea areaResultado;
+
+    @FXML
+    private TextArea areaProcedimiento;
+
+    @FXML
+    private TitledPane paneProcedimiento;
 
     @FXML
     private Label labelEstado;
@@ -177,6 +189,110 @@ public class SistemaFXController {
             mostrarError("No se pudo cargar el sistema:\n" + e.getMessage());
         }
     }
+    @FXML
+    private void cargarManual() {
+
+        // Crear ventana emergente
+        Dialog<ButtonType> dialog = new Dialog<>();
+
+        dialog.setTitle("Ingreso manual del sistema");
+        dialog.setHeaderText("Ingresar un sistema de ecuaciones");
+
+        // Área donde se ingresarán los coeficientes
+        Label ejemplo = new Label(
+            "Ejemplo de ingreso:\n" +
+            "4 1 1 6\n" +
+            "1 3 1 5\n" +
+            "1 1 3 5");
+
+        TextArea entrada = new TextArea();
+
+        entrada.setPromptText("Escribí aquí los coeficientes...");
+        entrada.setPrefRowCount(10);
+        entrada.setPrefColumnCount(30);
+        entrada.setWrapText(true);
+
+        Label instrucciones = new Label("Ingresá una fila por ecuación.\n" +"Separá los valores mediante espacios.\n" +"El último valor de cada fila es el término independiente.");
+
+        // Organizar los componentes
+        VBox contenido = new VBox(10,instrucciones,ejemplo,entrada);
+
+        dialog.getDialogPane().setContent(contenido);
+
+        // Botones
+        ButtonType botonCargar = new ButtonType("Cargar sistema",ButtonBar.ButtonData.OK_DONE);
+
+        ButtonType botonCancelar = new ButtonType("Cancelar",ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        dialog.getDialogPane().getButtonTypes().addAll(
+            botonCargar,
+            botonCancelar
+        );
+
+        // Asociar la ventana con la ventana principal
+        dialog.initOwner(labelArchivo.getScene().getWindow());
+
+        Optional<ButtonType> respuesta = dialog.showAndWait();
+
+        // Comprobar si se presionó Cargar sistema
+        if (respuesta.isEmpty() || respuesta.get() != botonCargar) {
+            return;
+        }
+
+        try {
+
+        // Interpretar y validar los datos ingresados
+        List<String> lineas = entrada.getText().lines().toList();
+
+        double[][] datos = interpretarArchivo(lineas);
+
+        int filas = datos.length;
+        int columnas = datos[0].length - 1;
+
+        double[][] nuevaA = new double[filas][columnas];
+        double[] nuevoB = new double[filas];
+
+        // Separar matriz A y vector b
+        for (int i = 0; i < filas; i++) {
+
+            for (int j = 0; j < columnas; j++) {
+                nuevaA[i][j] = datos[i][j];
+            }
+
+            nuevoB[i] = datos[i][columnas];
+        }
+
+        // Guardar el nuevo sistema
+        matrizA = nuevaA;
+        vectorB = nuevoB;
+
+        labelArchivo.setText("Sistema ingresado manualmente");
+
+        // Actualizar la interfaz principal
+        mostrarSistema();
+        mostrarFormaMatricial();
+
+        areaResultado.clear();
+
+        labelEstado.setText(
+            "Sistema ingresado correctamente: "
+            + filas + " incógnitas."
+        );
+
+        }catch (IllegalArgumentException e) {
+
+        Alert alerta = new Alert(Alert.AlertType.ERROR);
+
+        alerta.setTitle("Error al ingresar el sistema");
+        alerta.setHeaderText("No se pudo cargar el sistema");
+        alerta.setContentText(e.getMessage());
+
+        alerta.showAndWait();
+
+        labelEstado.setText("Error al ingresar el sistema.");
+        }
+    }
+
 
     // ==========================================
     // INTERPRETAR ARCHIVO TXT
@@ -276,30 +392,36 @@ public class SistemaFXController {
     // MOSTRAR SISTEMA DE ECUACIONES
     // ==========================================
 
+    
     private void mostrarSistema() {
 
         StringBuilder texto = new StringBuilder();
 
-        for (int i = 0; i < matrizA.length; i++) {
+            for (int i = 0; i < matrizA.length; i++) {
 
-            for (int j = 0; j < matrizA[i].length; j++) {
+                for (int j = 0; j < matrizA[i].length; j++) {
 
-                if (j > 0) {
-                    texto.append(" + ");
+                    double coeficiente = matrizA[i][j];
+
+                    // Agregar el signo correspondiente
+                    if (j > 0) {
+                        if (coeficiente < 0) {
+                            texto.append(" - ");
+                        } else {
+                            texto.append(" + ");
+                        }
+                    } else if (coeficiente < 0) {
+                        texto.append("-");
+                    }
+
+                    // Mostrar el valor absoluto del coeficiente
+                    texto.append(formatear(Math.abs(coeficiente))).append("·x").append(matrizA[i].length - j);
                 }
-
-                texto.append(formatear(matrizA[i][j]))
-                     .append("·x")
-                     .append(matrizA[i].length - j);
+                texto.append(" = ").append(formatear(vectorB[i])).append("\n");
             }
-
-            texto.append(" = ")
-                 .append(formatear(vectorB[i]))
-                 .append("\n");
-        }
-
         areaSistema.setText(texto.toString());
     }
+
 
     // ==========================================
     // MOSTRAR FORMA MATRICIAL
@@ -427,9 +549,14 @@ public class SistemaFXController {
 }
     private void mostrarResultado(SistemaController.Resultado resultado) {
 
+    // Ocultar y limpiar el procedimiento anterior.
+        areaProcedimiento.clear();
+        paneProcedimiento.setExpanded(false);
+        paneProcedimiento.setDisable(true);
+
     StringBuilder texto = new StringBuilder();
 
-    // Si ocurrió un error
+    // Si ocurrió un error.
     if (!resultado.isExitoso()) {
 
         texto.append("NO SE PUDO RESOLVER EL SISTEMA\n\n");
@@ -442,7 +569,7 @@ public class SistemaFXController {
         return;
     }
 
-    // Mostrar la solución
+    // Mostrar la solución.
     texto.append("SOLUCIÓN DEL SISTEMA\n\n");
 
     double[] solucion = resultado.getSolucion();
@@ -456,14 +583,14 @@ public class SistemaFXController {
              .append("\n");
     }
 
-    // Mostrar información del método
+    // Mostrar información del método.
     texto.append("\nMétodo utilizado: ")
          .append(resultado.getMetodoUsado());
 
     texto.append("\n\n")
          .append(resultado.getMensaje());
 
-    // Mostrar información adicional si es iterativo
+    // Mostrar información adicional si es iterativo.
     SistemaController.Convergencia convergencia =
         resultado.getConvergencia();
 
@@ -481,10 +608,25 @@ public class SistemaFXController {
              .append(convergencia.convergio() ? "Sí" : "No");
     }
 
-    // Agregar el procedimiento paso a paso
-    mostrarTraza(resultado.getTraza(), texto);
-    // Mostrar todo en la interfaz
+    // Mostrar los resultados principales.
     areaResultado.setText(texto.toString());
+
+    // Construir el procedimiento por separado.
+    StringBuilder procedimiento = new StringBuilder();
+
+    mostrarTraza(resultado.getTraza(), procedimiento);
+
+    // Mostrar el procedimiento solamente si existe una traza.
+    Traza traza = resultado.getTraza();
+
+    if (traza != null && !traza.estaVacia()) {
+
+        areaProcedimiento.setText(procedimiento.toString());
+
+        paneProcedimiento.setDisable(false);
+        paneProcedimiento.setExpanded(false);
+    }
+
     labelEstado.setText(
         resultado.isAdvertencia()
             ? "Sistema resuelto con advertencias."
@@ -495,19 +637,16 @@ public class SistemaFXController {
     private void mostrarTraza(Traza traza, StringBuilder texto) {
 
     if (traza == null || traza.estaVacia()) {
-        texto.append("\n\nNo hay pasos registrados.");
         return;
     }
 
-    texto.append("\n\n================================");
-    texto.append("\nPROCEDIMIENTO PASO A PASO");
-    texto.append("\n================================\n");
+    texto.append("PROCEDIMIENTO PASO A PASO\n");
+    texto.append("================================\n");
 
     for (Paso paso : traza.getPasos()) {
 
         texto.append("\n");
 
-        // Número del paso
         if (paso.indice() > 0) {
             texto.append("Paso ").append(paso.indice());
         } else {
@@ -517,7 +656,7 @@ public class SistemaFXController {
         texto.append("\n");
         texto.append(paso.operacion()).append("\n");
 
-        // Mostrar matriz si existe
+        // Mostrar matriz si existe.
         double[][] matriz = paso.matriz();
 
         if (matriz != null) {
@@ -541,7 +680,7 @@ public class SistemaFXController {
             }
         }
 
-        // Mostrar vector solución si existe
+        // Mostrar vector solución si existe.
         double[] x = paso.x();
 
         if (x != null) {
@@ -558,7 +697,7 @@ public class SistemaFXController {
             }
         }
 
-        // Mostrar error si corresponde
+        // Mostrar error si corresponde.
         if (!Double.isNaN(paso.error())) {
 
             texto.append("Error: ")
@@ -587,6 +726,9 @@ public class SistemaFXController {
         areaMatrizA.clear();
         areaVectorB.clear();
         areaResultado.clear();
+        areaProcedimiento.clear();
+        paneProcedimiento.setExpanded(false);
+        paneProcedimiento.setDisable(true);
 
         comboTipoMetodo.getSelectionModel().clearSelection();
         comboMetodo.getItems().clear();
