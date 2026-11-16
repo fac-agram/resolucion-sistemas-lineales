@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.TitledPane?>
+
+<BorderPane prefHeight="750" prefWidth="1100" stylesheets="@estilos.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="unsa.sistemas.view.SistemaFXController">
+
+    <top>
+        <VBox spacing="5">
+            <padding>
+                <Insets bottom="20" left="25" right="25" top="20" />
+            </padding>
+
+            <Label styleClass="titulo-principal" text="Resolución de Sistemas Lineales" />
+
+            <Label styleClass="subtitulo" text="Herramienta de cálculo numérico" />
+        </VBox>
+    </top>
+
+    <center>
+        <HBox spacing="20">
+            <padding>
+                <Insets bottom="20" left="25" right="25" top="10" />
+            </padding>
+
+            <!-- PANEL DE INGRESO Y VISUALIZACIÓN -->
+            <VBox spacing="10" HBox.hgrow="ALWAYS">
+
+                <Label styleClass="titulo-seccion" text="Ingreso del sistema" />
+
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Button onAction="#cargarArchivo" styleClass="boton-principal" text="Cargar archivo .txt" />
+                    <Button text="Ingresar manualmente" onAction="#cargarManual"/>
+
+                    <Label fx:id="labelArchivo" text="Ningún archivo seleccionado" wrapText="true" />
+                </HBox>
+
+                <Label text="Sistema de ecuaciones" />
+
+                <TextArea fx:id="areaSistema" editable="false" prefRowCount="5" promptText="Aquí aparecerán las ecuaciones..." wrapText="true" VBox.vgrow="ALWAYS" />
+
+                <Label text="Forma matricial" />
+                <HBox alignment="TOP_CENTER" spacing="15">
+                <!-- MATRIZ A -->
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label text="Matriz A" />
+                <TextArea fx:id="areaMatrizA" editable="false" prefHeight="111.0" prefRowCount="6" prefWidth="269.0" promptText="Matriz de coeficientes..." wrapText="false" VBox.vgrow="ALWAYS" />
+                  </VBox>
+                  <!-- VECTOR B -->
+                  <VBox spacing="5" HBox.hgrow="ALWAYS">
+                  <Label text="Vector b" />
+                  <TextArea fx:id="areaVectorB" editable="false" prefColumnCount="8" prefHeight="111.0" prefRowCount="6" prefWidth="57.0" promptText="Términos independientes..." wrapText="false" VBox.vgrow="ALWAYS" />
+                  </VBox>
+                  </HBox>
+
+                <Label text="Tipo de método" />
+                <ComboBox fx:id="comboTipoMetodo" maxWidth="Infinity" promptText="Seleccionar tipo de método" />
+                
+                <Label text="Método de resolución" />
+                <ComboBox fx:id="comboMetodo" disable="true" maxWidth="Infinity" promptText="Primero seleccioná un tipo de método" />
+                
+                <HBox spacing="10">
+                    <Button onAction="#resolverSistema" styleClass="boton-principal" text="Resolver" />
+
+                    <Button onAction="#limpiarCampos" text="Limpiar" />
+                </HBox>
+                </VBox>
+                <!-- PANEL DE RESULTADOS -->
+            <VBox spacing="12" HBox.hgrow="ALWAYS">
+
+                <Label styleClass="titulo-seccion" text="Resultados" />
+
+                <Label text="Solución:" />
+
+                <TextArea fx:id="areaResultado"
+                    editable="false"
+                    prefHeight="150"
+                    minHeight="120"
+                    promptText="Los resultados aparecerán aquí..."
+                    wrapText="true"
+                    VBox.vgrow="NEVER" />
+
+                    <TitledPane fx:id="paneProcedimiento"
+                        text="Ver procedimiento paso a paso"
+                        expanded="false"
+                        collapsible="true"
+                        disable="true"
+                        prefHeight="350"
+                        minHeight="220"
+                        VBox.vgrow="ALWAYS">
+                        <content>
+                            <TextArea fx:id="areaProcedimiento"
+                                editable="false"
+                                wrapText="true"
+                                promptText="Aquí aparecerán los pasos del procedimiento." />
+                        </content>
+                    </TitledPane>
+
+            </VBox>
+
+        </HBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER_LEFT">
+            <padding>
+                <Insets bottom="15" left="25" right="25" top="10" />
+            </padding>
+
+            <Label fx:id="labelEstado" styleClass="texto-estado" text="Listo para cargar un sistema." />
+        </HBox>
+    </bottom>
+
+</BorderPane>

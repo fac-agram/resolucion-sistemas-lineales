@@ -1,0 +1,90 @@
+
+/* =================================
+   VENTANA PRINCIPAL
+================================= */
+
+.root {
+    -fx-background-color: #F1F5F9;
+    -fx-font-family: "Segoe UI";
+}
+
+/* =================================
+   TITULOS
+================================= */
+
+.titulo-principal {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1E293B;
+}
+
+.subtitulo {
+    -fx-font-size: 13px;
+    -fx-text-fill: #64748B;
+}
+
+.titulo-seccion {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #334155;
+}
+
+/* =================================
+   AREAS DE TEXTO
+================================= */
+
+.text-area {
+    -fx-background-color: white;
+    -fx-border-color: #CBD5E1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.text-area .content {
+    -fx-background-color: white;
+}
+
+/* =================================
+   COMBOBOX
+================================= */
+
+.combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #CBD5E1;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+/* =================================
+   BOTONES
+================================= */
+
+.button {
+    -fx-background-color: #E2E8F0;
+    -fx-text-fill: #334155;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-background-radius: 5px;
+}
+
+.button:hover {
+    -fx-background-color: #CBD5E1;
+}
+
+.boton-principal {
+    -fx-background-color: #2563EB;
+    -fx-text-fill: white;
+}
+
+.boton-principal:hover {
+    -fx-background-color: #1D4ED8;
+}
+
+/* =================================
+   ESTADO INFERIOR
+================================= */
+
+.texto-estado {
+    -fx-font-size: 12px;
+    -fx-text-fill: #64748B;
+}
