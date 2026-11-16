@@ -2,3 +2,13 @@
 .vscode/
 *.log
 *.tmp
+
+# Java build artifacts
+*.class
+out/
+bin/
+
+# AI tooling
+.agents/
+.atl/
+skills-lock.json
