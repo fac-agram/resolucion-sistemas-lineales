@@ -48,19 +48,26 @@ public class GaussJordan extends Resolutor implements ResolutorDirecto {
                 );
             }
 
-            // Normalizar la fila pivote (diagonal unitaria)
+            // Normalizar la fila pivote (diagonal unitaria).
+            // Si el pivote ya es 1 (|pivote - 1| <= EPS) la division es
+            // no-op: se omite la aritmetica y el paso cosmetico, igual que
+            // se omiten las eliminaciones con factor <= EPS mas abajo.
+            // El indice solo se consume cuando hay paso registrado, asi la
+            // numeracion sigue siendo monotonica y sin huecos.
             double pivote = G[k][k];
 
             if (Math.abs(pivote) <= EPS) {
                 throw new ArithmeticException("Pivote nulo en fila " + k);
             }
 
-            for (int j = k; j <= n; j++) {
-                G[k][j] /= pivote;
-            }
+            if (Math.abs(pivote - 1.0) > EPS) {
+                for (int j = k; j <= n; j++) {
+                    G[k][j] /= pivote;
+                }
 
-            registrarPaso(indice++, "F" + (k + 1) + " ← F" + (k + 1)
-                + " / " + pivote, G);
+                registrarPaso(indice++, "F" + (k + 1) + " ← F" + (k + 1)
+                    + " / " + pivote, G);
+            }
 
             // Eliminar la columna k en todas las filas (i ≠ k)
             for (int i = 0; i < n; i++) {

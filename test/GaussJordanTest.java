@@ -176,4 +176,99 @@ public class GaussJordanTest {
                 "G[" + i + "][" + i + "] debe ser 1 (diagonal unitaria)");
         }
     }
+
+    // R2.2: un pivote que ya vale 1 no debe generar el paso cosmetico "/ 1.0"
+    @Test
+    void trazaSinNormalizacionesNoOp() {
+
+        Traza traza = new Traza();
+
+        // Primera fila con pivote exacto 1: la normalizacion de k=0 es no-op
+        GaussJordan jordan = new GaussJordan(
+            new double[][] {
+                {1, 2},
+                {3, 4}
+            },
+            new double[] {5, 11},
+            2,
+            traza
+        );
+
+        jordan.resolver();
+
+        for (Paso p : traza.getPasos()) {
+            assertFalse(p.operacion().contains("/ 1.0"),
+                "la traza no debe contener normalizaciones no-op, encontrado: "
+                + p.operacion());
+        }
+
+        // Sin el paso no-op quedan 5: snapshot + normalizacion k=1
+        // + 2 eliminaciones + solucion final (antes: 6 con "F1 <- F1 / 1.0")
+        assertEquals(5, traza.totalPasos(),
+            "los pasos cosmeticos de no-op deben suprimirse");
+    }
+
+    // R2: tras un swap cuyo pivote no es 1, la normalizacion SI debe registrarse
+    // (guarda contra sobre-supresion: suprimir toda normalizacion rompe esto)
+    @Test
+    void verificaNormalizacionTrasSwapSeRegistra() {
+
+        Traza traza = new Traza();
+
+        GaussJordan jordan = new GaussJordan(
+            new double[][] {
+                {0, 1},
+                {2, 1}
+            },
+            new double[] {1, 1},
+            2,
+            traza
+        );
+
+        jordan.resolver();
+
+        List<Paso> pasos = traza.getPasos();
+
+        // verificado a mano: snapshot=0, "Intercambio F1 ↔ F2"=1, "F1 ← F1 / 2.0"=2
+        Paso swap = pasos.get(1);
+        assertEquals(1, swap.indice(), "el swap consume el indice 1");
+        assertEquals("Intercambio F1 ↔ F2", swap.operacion(),
+            "el swap se registra como paso numerado");
+
+        Paso normalizacion = pasos.get(2);
+        assertEquals(2, normalizacion.indice(),
+            "la normalizacion tras el swap consume el indice 2");
+        assertEquals("F1 ← F1 / 2.0", normalizacion.operacion(),
+            "un pivote 2.0 tras swap no es no-op: debe normalizarse y registrarse");
+    }
+
+    // R6.1: Paso copia la matriz al registrar; mutaciones posteriores no lo alteran
+    @Test
+    void verificaPasoInmuneAMutaciones() {
+
+        Traza traza = new Traza();
+
+        GaussJordan jordan = new GaussJordan(
+            new double[][] {
+                {4, 2, 2},
+                {2, 5, 1},
+                {2, 1, 3}
+            },
+            new double[] {14, 15, 13},
+            3,
+            traza
+        );
+
+        jordan.resolver();
+
+        List<Paso> pasos = traza.getPasos();
+
+        double[][] snapshot = pasos.get(0).matriz();
+        double[][] final_ = pasos.get(pasos.size() - 1).matriz();
+
+        assertEquals(4.0, snapshot[0][0], 0.0,
+            "el paso 0 conserva A[0][0] = 4 tal como se registro");
+        assertEquals(1.0, final_[0][0], 1e-12,
+            "la matriz final si mutó: pivote normalizado a 1");
+    }
 }
