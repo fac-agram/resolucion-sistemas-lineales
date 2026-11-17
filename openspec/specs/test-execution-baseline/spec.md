@@ -8,6 +8,12 @@ Provenance
 - Synced: 2026-11-17
 - Origin verdict: pass_with_warnings (zero CRITICAL); see archive-report.md in the archived change
 - Requirements R1-R8 and their scenarios are preserved verbatim from the delta spec.
+- Synced: 2026-11-17 — R5 superseded by change trace-label-fixes (archive:
+  openspec/changes/archive/2026-11-17-trace-label-fixes/; origin verdict pass_with_warnings, commits
+  c09f8ed + d83d63e; see its archive-report.md). R5 re-pinned 11/52 -> 12 classes / 82 methods via the
+  measured chain 67 (delta-writing HEAD) -> 76 (sibling mejoramiento-iterativo apply, k_s=9) -> 82
+  (this change +6 tests); previously-note preserved inside the requirement. R1-R4, R6-R8 and the
+  historical Delivery Mapping untouched.
 -->
 
 ## Requirements
@@ -76,13 +82,15 @@ Tests MUST NOT call `System.exit` or use `TEST_OK`, `TEST_FALLO`, or any stdout 
 
 ### Requirement: R5 Test Discovery Hygiene
 
-Surefire MUST discover all 11 `*Test` classes (52 methods) via its default `**/*Test.java` pattern. `test/TrazaDemo.java` MUST NOT run as a test, nor be converted.
+Surefire MUST discover all 12 `*Test` classes (82 methods) via its default `**/*Test.java` pattern. `test/TrazaDemo.java` MUST NOT run as a test, nor be converted.
+(Previously: pinned 11 classes / 52 methods — the establish-build-test-baseline snapshot, stale since suite growth added `MejoramientoIterativoTest` and later methods; re-pinned to the verified HEAD reality 12 classes / 67 methods at delta-writing time. Final applied reality, locked at apply by measurement: 12 classes / 82 methods — 67 → 76 with sibling `mejoramiento-iterativo` apply (k_s=9) → 82 with this change's +6 tests.)
 
-#### Scenario: R5.1 All eleven classes discovered
+#### Scenario: R5.1 All twelve classes discovered
 
 - GIVEN the change is fully applied
 - WHEN `sh ./mvnw -o clean test` runs
-- THEN 11 distinct test classes appear in the surefire output
+- THEN 12 distinct test classes appear in the surefire output
+- AND the run reports `Tests run: 82, Failures: 0, Errors: 0, Skipped: 0`
 
 #### Scenario: R5.2 Demo excluded
 
