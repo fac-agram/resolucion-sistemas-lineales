@@ -83,8 +83,14 @@ public final class Normas {
     /**
      * Norma infinito (del máximo) de un vector.
      *
+     * <p><b>Propagación de no finitos:</b> se acumula con {@code Math.max},
+     * que propaga NaN en lugar de descartarlo. Así un residuo con NaN se
+     * mide como NaN y la prueba de parada {@code ‖r‖∞ ≤ ε} es falsa: el
+     * resolutor no puede declarar convergencia sobre datos no finitos
+     * (la comparación {@code NaN > max} anterior los omitía en silencio).</p>
+     *
      * @param v vector
-     * @return max|vᵢ|; 0 para vector vacío
+     * @return max|vᵢ|; 0 para vector vacío; NaN si algún valor es NaN
      * @throws IllegalArgumentException si {@code v} es {@code null}
      */
     public static double normaInfinito(double[] v) {
@@ -93,10 +99,7 @@ public final class Normas {
         }
         double max = 0.0;
         for (double valor : v) {
-            double abs = Math.abs(valor);
-            if (abs > max) {
-                max = abs;
-            }
+            max = Math.max(max, Math.abs(valor));
         }
         return max;
     }

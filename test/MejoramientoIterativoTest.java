@@ -1,6 +1,8 @@
 package unsa.sistemas.model.iterative;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,6 +44,26 @@ public class MejoramientoIterativoTest {
         assertTrue(m.getIteraciones() > 0, "Debe haber realizado al menos 1 iteración de corrección");
         assertTrue(m.getErrorFinal() <= 1e-7, "Error final dentro de la tolerancia");
         assertTrue(traza.totalPasos() > 0, "Traza debe contener pasos");
+    }
+
+    /**
+     * R2.1: con b = {1, NaN} el residuo medido es no finito, asi que el
+     * flag de convergencia NUNCA debe ser true (el defecto shipped mentia
+     * con convergio=true). El iterado calculado se devuelve sin sanitizar.
+     */
+    @Test
+    void verificaEntradaNaNNoDeclaraConvergencia() {
+        double[][] A = {{1.0, 2.0}, {3.0, 5.0}};
+        double[] b = {1.0, Double.NaN};
+        MejoramientoIterativo m = new MejoramientoIterativo(A, b, 2);
+        double[] x = m.resolver();
+
+        assertFalse(m.convergio(), "Un residuo NaN jamas puede declarar convergencia");
+        assertNotNull(x, "El iterado calculado se devuelve sin sanitizar");
+        assertEquals(2, x.length, "La solucion conserva el orden del sistema");
+        for (double v : x) {
+            assertTrue(Double.isNaN(v), "El iterado conserva los NaN calculados (sin sanitizar)");
+        }
     }
 
     @Test

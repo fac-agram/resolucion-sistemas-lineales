@@ -78,6 +78,28 @@ public class NormasTest {
         assertEquals(3.0, Normas.norma2(d), 1e-6, "‖diag(3,1)‖₂");
     }
 
+    /**
+     * ‖v‖∞ debe propagar los valores no finitos en lugar de omitirlos:
+     * NaN domina sobre cualquier acotado, ±Infinity dan +Infinity, y
+     * (+Inf, NaN) colapsa a NaN. El vacío sigue siendo 0.0 (invariante).
+     * Caza el bug del salto silencioso: {@code NaN > max} siempre es
+     * falso, así que la comparación {@code if (abs > max)} descarta NaN.
+     */
+    @Test
+    void verificaNormaInfinitoPropagaNoFinitos() {
+        assertEquals(Double.NaN, Normas.normaInfinito(new double[]{3.0, -4.0, Double.NaN}),
+                "‖(3,-4,NaN)‖∞ debe ser NaN, no 4.0");
+        assertEquals(Double.NaN, Normas.normaInfinito(new double[]{Double.NaN, Double.NaN, Double.NaN}),
+                "‖(NaN,NaN,NaN)‖∞ debe ser NaN, no 0.0");
+        assertEquals(Double.POSITIVE_INFINITY,
+                Normas.normaInfinito(new double[]{Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY}),
+                "‖(+Inf,-Inf)‖∞ debe ser +Inf");
+        assertEquals(Double.NaN,
+                Normas.normaInfinito(new double[]{Double.POSITIVE_INFINITY, Double.NaN}),
+                "‖(+Inf,NaN)‖∞ debe ser NaN, no +Inf");
+        assertEquals(0.0, Normas.normaInfinito(new double[]{}), "‖()‖∞ debe seguir siendo 0.0");
+    }
+
     /** Null en cualquier norma debe lanzar IllegalArgumentException. */
     @Test
     void verificaValidaciones() {
