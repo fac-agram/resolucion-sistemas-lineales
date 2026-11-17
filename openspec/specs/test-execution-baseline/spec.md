@@ -12,8 +12,18 @@ Provenance
   openspec/changes/archive/2026-11-17-trace-label-fixes/; origin verdict pass_with_warnings, commits
   c09f8ed + d83d63e; see its archive-report.md). R5 re-pinned 11/52 -> 12 classes / 82 methods via the
   measured chain 67 (delta-writing HEAD) -> 76 (sibling mejoramiento-iterativo apply, k_s=9) -> 82
-  (this change +6 tests); previously-note preserved inside the requirement. R1-R4, R6-R8 and the
-  historical Delivery Mapping untouched.
+   (this change +6 tests); previously-note preserved inside the requirement. R1-R4, R6-R8 and the
+   historical Delivery Mapping untouched.
+- Synced: 2026-11-17 — R2 superseded by change honest-results (archive:
+  openspec/changes/archive/2026-11-17-honest-results/; origin verdict pass_with_warnings, commits
+  8e0f854 + 6ab9fb9 (squashed) on base 3f2fd7e, archived at HEAD 96f0b7d; see its archive-report.md).
+  R2's literal `Tests run: 52` pinning is replaced by the unpinned single-source formulation: the
+  expected total is maintained in openspec/config.yaml (currently 82 across 12 classes — already
+  matching, no config edit at archive). Scenario R2.2 reconciled 11 -> 12 `TEST-*.xml` during this
+  merge (measured at HEAD; verify WARNING-3; previously-note preserved inside the scenario). The
+  sibling-attributed drift note: this change's own tip measured 59/11 at 6ab9fb9; 82/12 at HEAD.
+  R1, R3-R8 (incl. the trace-label-fixes R5 re-pin 12/82) and the historical Delivery Mapping
+  untouched.
 -->
 
 ## Requirements
@@ -39,19 +49,24 @@ Provenance
 
 ### Requirement: R2 Test Execution
 
-`sh ./mvnw -o clean test` MUST execute all 52 converted `@Test` methods, exit 0, and report `Tests run: 52, Failures: 0, Errors: 0, Skipped: 0`. It MUST write one `TEST-*.xml` per class and leave no `*.dump`/`*.dumpstream`. Surefire MUST use its JUnit Platform provider; the `JUnit3Provider` fallback with `Tests run: 0` MUST NOT occur.
+`sh ./mvnw -o clean test` MUST execute the full discovered JUnit 5 test set, exit 0, and report `Failures: 0, Errors: 0, Skipped: 0`. It MUST write one `TEST-*.xml` per test class and leave no `*.dump`/`*.dumpstream`. Surefire MUST use its JUnit Platform provider; the `JUnit3Provider` fallback with `Tests run: 0` MUST NOT occur. The expected total test count MUST be maintained in `openspec/config.yaml`; this requirement SHALL NOT pin a literal count.
+(Previously: pinned the literal `Tests run: 52` — the establish-build-test-baseline snapshot at conversion time.)
+
+> Why the literal pin is removed: adding tests is legitimate behavior, and a literal pin turns the anti-false-green check into a change-detector that fails on every valid test addition. The count remains enforced, but against the single source in `openspec/config.yaml`.
 
 #### Scenario: R2.1 Green baseline
 
 - GIVEN the change is fully applied
 - WHEN `sh ./mvnw -o clean test` runs
-- THEN the output contains `Tests run: 52, Failures: 0, Errors: 0, Skipped: 0` and `BUILD SUCCESS`
+- THEN the output contains `Tests run: <expected>, Failures: 0, Errors: 0, Skipped: 0` and `BUILD SUCCESS`
+- AND `<expected>` equals the test total declared in `openspec/config.yaml`
 
 #### Scenario: R2.2 Real runner, per-class reports
 
 - GIVEN a clean `target/`
 - WHEN the same command runs
-- THEN `target/surefire-reports/` holds 11 `TEST-*.xml` reports with no `Tests run: 0`, `JUnit3Provider`, or fork dump
+- THEN `target/surefire-reports/` holds 12 `TEST-*.xml` reports with no `Tests run: 0`, `JUnit3Provider`, or fork dump
+(previously: 11 `TEST-*.xml` — the delta text written at this change's own era, 11 classes / 59 tests at `6ab9fb9`; reconciled to 12 during the honest-results archive merge because sibling `mejoramiento-iterativo` added the 12th class `MejoramientoIterativoTest`; measured 12 at HEAD `96f0b7d` — verify WARNING-3. If a future change adds a class, re-measure against `config.yaml`.)
 
 ### Requirement: R3 Failure Propagation (Anti-False-Green)
 
