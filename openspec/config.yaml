@@ -1,0 +1,77 @@
+schema: spec-driven
+
+project:
+  name: resolucion-sistemas-lineales
+  description: >-
+    Academic JavaFX desktop application that solves systems of linear equations
+    using direct and iterative numerical methods.
+
+context: |
+  Tech stack: Java 17 (installed JDK), Maven Wrapper, JavaFX 21.0.13 (controls + fxml).
+  Architecture: JavaFX MVC under src/unsa/sistemas (controller, model/{direct,iterative,matrix,trace}, utils, view).
+  Layout: non-standard; pom sourceDirectory=src, testSourceDirectory=test, mainClass=unsa.sistemas.view.MainApp.
+  Build: `sh ./mvnw -o clean compile` (pom pins maven.compiler.release=17).
+  Testing: JUnit 5 (junit-jupiter 5.11.4) under test/, executed by maven-surefire-plugin 3.5.4.
+  Verify: `sh ./mvnw -o clean test`; expect Tests run: 52, Failures: 0, Errors: 0.
+  Style: existing identifiers use Spanish domain vocabulary; new code follows existing patterns.
+
+testing:
+  strict_tdd: false
+  reason: >-
+    Mechanical conversion of pre-existing main()-based harnesses into JUnit 5
+    tests. Expected values, tolerances and exception types already existed; no
+    new production behavior is being written.
+  detected_date: 2026-11-16
+  runner:
+    # expected: 52 tests across 11 classes (target/surefire-reports/TEST-*.xml)
+    command: "sh ./mvnw -o clean test"
+    framework: junit5
+  layers:
+    unit: true
+    integration: true
+    e2e: false
+  coverage:
+    available: false
+    command: ""
+  quality:
+    linter: false
+    type_checker: false
+    formatter: false
+  compile_setup:
+    # Legacy javac flow is superseded by Maven (release=17 pinned in pom.xml).
+    maven_command: "sh ./mvnw -o clean compile"
+  enable_strict_tdd_requires:
+    # All infrastructure prerequisites were satisfied by the
+    # establish-build-test-baseline change (JUnit 5 dependency, surefire 3.5.4,
+    # release 17, 52 JUnit tests, no stale .class under src/).
+    # strict_tdd stays false because that change was a mechanical conversion of
+    # pre-existing harnesses, not new production behavior. A future change that
+    # adds behavior may adopt strict TDD without further setup.
+
+rules:
+  proposal:
+    - State whether the change is build/tooling or algorithm-related.
+    - Include a rollback note for build or test-infrastructure changes.
+  specs:
+    - Use Given/When/Then for scenarios.
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY).
+    - Describe numerical expectations with tolerances, not exact floating-point equality.
+  design:
+    - Document the selected numerical method and convergence assumptions.
+    - Document architecture decisions with rationale.
+  tasks:
+    - Group by phase with hierarchical numbering.
+    - Keep tasks completable in one session.
+    - Add explicit verification steps; `sh ./mvnw -o clean test` runs the JUnit 5 suite.
+  apply:
+    - Follow existing package and naming patterns under src/unsa/sistemas.
+    - Run `sh ./mvnw -o clean test`; surefire discovers `*Test.java` and fails the build on assertion failure.
+    - tdd: false
+    - test_command: "sh ./mvnw -o clean test"
+    - verify_command: "sh ./mvnw -o clean test"
+  verify:
+    test_command: "sh ./mvnw -o clean test"
+    build_command: "sh ./mvnw -o clean compile"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas.
