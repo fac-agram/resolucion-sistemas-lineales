@@ -101,6 +101,11 @@ public class RelajacionSimple extends Resolutor implements ResolutorIterativo {
                 }
             }
             errorFinal = norma;
+            // La pasada que mide un residuo bajo tolerancia TAMBIEN se cuenta:
+            // el criterio de paro evalua el residual (no una actualizacion
+            // propia), asi que asignar antes del break iguala el conteo con
+            // Jacobi/Gauss-Seidel/SOR y deja el invariante totalPasos == iteraciones.
+            iteraciones = k;
 
             // 2b. Criterio de paro: todo el residual bajo la tolerancia
             if (norma < TOLERANCIA) {
@@ -118,8 +123,6 @@ public class RelajacionSimple extends Resolutor implements ResolutorIterativo {
             for (int i = 0; i < n; i++) {
                 r[i] -= delta * A[i][m];
             }
-
-            iteraciones = k;
 
             if (traza != null) {
                 // error del paso = norma del residual DESPUÉS de la actualización
