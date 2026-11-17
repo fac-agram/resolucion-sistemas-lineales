@@ -232,6 +232,59 @@ public class SistemaControllerTest {
     }
 
     /**
+     * MEJORAMIENTO con b = {1, NaN}: el estado NO_FINITO oculta la
+     * solucion, pero la convergencia copiada via la rama
+     * ResolutorIterativo es honesta: convergio=false, tope de 1000
+     * correcciones y error NaN (antes del fix mentia true/0/0.0).
+     * El mensaje nunca usa el texto de exito.
+     */
+    @Test
+    void verificaMejoramientoNoFinitoConBanderasHonestas() {
+        double[][] A = {{1, 2}, {3, 5}};
+        double[] b = {1, Double.NaN};
+
+        SistemaController c = new SistemaController();
+        Resultado r = c.resolver(A, b, SistemaController.MEJORAMIENTO);
+
+        assertFalse(r.isExitoso(), "mejoramiento no finito no debe ser exitoso");
+        assertEquals(SistemaController.Estado.NO_FINITO, r.getEstado(),
+                "mejoramiento no finito estado NO_FINITO");
+        assertNull(r.getSolucion(), "mejoramiento no finito no expone solucion");
+
+        assertNotNull(r.getConvergencia(), "iterativo expone convergencia copiada del solver");
+        assertFalse(r.getConvergencia().convergio(), "bandera honesta post-R2: no convergio");
+        assertEquals(1000, r.getConvergencia().iteraciones(), "tope de correcciones copiado");
+        assertTrue(Double.isNaN(r.getConvergencia().errorFinal()), "error NaN copiado sin sanitizar");
+
+        assertFalse(r.getMensaje().contains("Resuelto con éxito."),
+                "NO_FINITO no afirma exito");
+    }
+
+    /**
+     * MEJORAMIENTO sobre sistema singular: el ArithmeticException del
+     * pivote nulo propaga y el controlador lo mapea a ERROR con un
+     * mensaje que nombra la ejecucion fallida del metodo.
+     */
+    @Test
+    void verificaMejoramientoSingularEstadoError() {
+        double[][] A = {{1, 2}, {2, 4}};
+        double[] b = {3, 6};
+
+        SistemaController c = new SistemaController();
+        Resultado r = c.resolver(A, b, SistemaController.MEJORAMIENTO);
+
+        assertFalse(r.isExitoso(), "mejoramiento singular no debe ser exitoso");
+        assertEquals(SistemaController.Estado.ERROR, r.getEstado(),
+                "mejoramiento singular estado ERROR");
+        assertNull(r.getSolucion(), "mejoramiento singular no expone solucion");
+        assertNull(r.getConvergencia(), "ERROR sin convergencia");
+        assertTrue(r.getMensaje().contains("Error durante la ejecución de MEJORAMIENTO"),
+                "el mensaje nombra la ejecucion fallida de MEJORAMIENTO");
+        assertFalse(r.getMensaje().contains("Resuelto con éxito."),
+                "ERROR no usa el texto de exito");
+    }
+
+    /**
      * JACOBI sobre una matriz no dominante que SÍ converge: el resultado es
      * una solución legítima (no una advertencia) y el aviso de dominancia se
      * agrega como nota al mensaje de éxito.
