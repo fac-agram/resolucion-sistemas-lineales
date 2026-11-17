@@ -8,6 +8,9 @@
 out/
 bin/
 
+# Packaging output (package.sh): regenerable, never committed (spec R1.3)
+dist/
+
 # AI tooling
 .agents/
 .atl/
