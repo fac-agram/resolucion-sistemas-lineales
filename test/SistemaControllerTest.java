@@ -1,6 +1,9 @@
 import unsa.sistemas.controller.SistemaController;
 import unsa.sistemas.controller.SistemaController.Resultado;
 
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
 // Caso de prueba con verificación: comprueba el despacho del controlador
 // a través del registro de fábricas tipadas (traza, convergencia,
 // advertencias y manejo de errores).
@@ -9,17 +12,7 @@ import unsa.sistemas.controller.SistemaController.Resultado;
 //   2x + y = 3
 //   x + 3y = 5
 // Solución exacta: [0.8, 1.4] (diagonalmente dominante).
-//
-// Sale con código 0 si todo pasa (TEST_OK), 1 si falla (TEST_FALLO).
-//
-// Cómo compilar y ejecutar desde la raíz del proyecto:
-//   shopt -s globstar
-//   javac -d out src/**/*.java
-//   javac -cp out -d out test/*.java
-//   java -cp out SistemaControllerTest
 public class SistemaControllerTest {
-
-    private static boolean ok = true;
 
     private static final double[][] A_CANONICA = {{2, 1}, {1, 3}};
     private static final double[] B_CANONICA = {3, 5};
@@ -28,39 +21,18 @@ public class SistemaControllerTest {
     private static final String ADVERTENCIA_JACOBI =
             "La matriz no es estrictamente diagonal dominante. Jacobi podría no converger.";
 
-    public static void main(String[] args) {
-        verificaJacobi();
-        verificaGaussSeidel();
-        verificaMetodoDesconocido();
-        verificaMetodoNulo();
-        verificaJacobiSinDominanciaDiagonal();
-
-        verificaGaussDirecto();
-        verificaGaussJordan();
-        verificaCrout();
-        verificaCholesky();
-
-        verificaGaussSingular();
-        verificaGaussJordanSingular();
-        verificaCroutPivoteNulo();
-        verificaCholeskyNoSimetrica();
-        verificaCholeskyNoDefinidaPositiva();
-
-        System.out.println(ok ? "TEST_OK" : "TEST_FALLO");
-        System.exit(ok ? 0 : 1);
-    }
-
     /**
      * JACOBI: éxito, solución EXACTA del sistema (calculada a mano con
      * Cramer, sin usar el propio resolutor — evita la tautología de
      * comparar el resultado consigo mismo), traza y convergencia.
      */
-    private static void verificaJacobi() {
+    @Test
+    void verificaJacobi() {
         SistemaController c = new SistemaController();
         Resultado r = c.resolver(A_CANONICA, B_CANONICA, SistemaController.JACOBI);
 
-        chequea("jacobi exito", r.isExitoso());
-        chequea("jacobi sin advertencia", !r.isAdvertencia());
+        assertTrue(r.isExitoso(), "jacobi exito");
+        assertTrue(!r.isAdvertencia(), "jacobi sin advertencia");
 
         // Solución exacta por la regla de Cramer, sistema
         //   2x + y = 3
@@ -70,34 +42,35 @@ public class SistemaControllerTest {
         // det_y  = 2*5 - 3*1 = 7  ->  y = 7/5 = 1.4
         // Solución exacta: [0.8, 1.4] (tolerancia 1e-6)
         double[] esperado = {0.8, 1.4};
-        comparaVector("jacobi solucion", r.getSolucion(), esperado);
+        assertArrayEquals(esperado, r.getSolucion(), 1e-6, "jacobi solucion");
 
         var traza = r.getTraza();
-        chequea("jacobi traza no nula", traza != null);
+        assertTrue(traza != null, "jacobi traza no nula");
         if (traza != null) {
-            chequea("jacobi traza con >= 1 paso", traza.totalPasos() >= 1);
+            assertTrue(traza.totalPasos() >= 1, "jacobi traza con >= 1 paso");
         }
 
         var conv = r.getConvergencia();
-        chequea("jacobi convergencia no nula", conv != null);
+        assertTrue(conv != null, "jacobi convergencia no nula");
         if (conv != null) {
-            chequea("jacobi convergio", conv.convergio());
-            chequea("jacobi iteraciones > 0", conv.iteraciones() > 0);
+            assertTrue(conv.convergio(), "jacobi convergio");
+            assertTrue(conv.iteraciones() > 0, "jacobi iteraciones > 0");
         }
     }
 
     /** GAUSS_SEIDEL: éxito, convergencia reportada y más rápido que Jacobi. */
-    private static void verificaGaussSeidel() {
+    @Test
+    void verificaGaussSeidel() {
         SistemaController c = new SistemaController();
         Resultado r = c.resolver(A_CANONICA, B_CANONICA, SistemaController.GAUSS_SEIDEL);
 
-        chequea("gauss-seidel exito", r.isExitoso());
+        assertTrue(r.isExitoso(), "gauss-seidel exito");
 
         var conv = r.getConvergencia();
-        chequea("gauss-seidel convergencia no nula", conv != null);
+        assertTrue(conv != null, "gauss-seidel convergencia no nula");
         if (conv != null) {
-            chequea("gauss-seidel convergio", conv.convergio());
-            chequea("gauss-seidel iteraciones > 0", conv.iteraciones() > 0);
+            assertTrue(conv.convergio(), "gauss-seidel convergio");
+            assertTrue(conv.iteraciones() > 0, "gauss-seidel iteraciones > 0");
         }
 
         Resultado rJacobi = c.resolver(A_CANONICA, B_CANONICA, SistemaController.JACOBI);
@@ -105,27 +78,29 @@ public class SistemaControllerTest {
             // Aserción clave: es la que detectaría un intercambio accidental
             // de los registros JACOBI y GAUSS_SEIDEL (si las fábricas
             // estuvieran invertidas, GS no sería más rápido que Jacobi).
-            chequea("gauss-seidel mas rapido que jacobi",
-                    conv.iteraciones() < rJacobi.getConvergencia().iteraciones());
+            assertTrue(conv.iteraciones() < rJacobi.getConvergencia().iteraciones(),
+                    "gauss-seidel mas rapido que jacobi");
         }
     }
 
     /** Método inexistente: sin éxito y mensaje con "no reconocido". */
-    private static void verificaMetodoDesconocido() {
+    @Test
+    void verificaMetodoDesconocido() {
         SistemaController c = new SistemaController();
         Resultado r = c.resolver(A_CANONICA, B_CANONICA, "METODO_FANTASMA");
 
-        chequea("desconocido sin exito", !r.isExitoso());
-        chequea("desconocido mensaje contiene 'no reconocido'",
-                r.getMensaje() != null && r.getMensaje().contains("no reconocido"));
+        assertTrue(!r.isExitoso(), "desconocido sin exito");
+        assertTrue(r.getMensaje() != null && r.getMensaje().contains("no reconocido"),
+                "desconocido mensaje contiene 'no reconocido'");
     }
 
     /** Método null: sin éxito (guardia explícita del controlador). */
-    private static void verificaMetodoNulo() {
+    @Test
+    void verificaMetodoNulo() {
         SistemaController c = new SistemaController();
         Resultado r = c.resolver(A_CANONICA, B_CANONICA, null);
 
-        chequea("null sin exito", !r.isExitoso());
+        assertTrue(!r.isExitoso(), "null sin exito");
     }
 
     /**
@@ -137,20 +112,21 @@ public class SistemaControllerTest {
      * condición <i>suficiente</i> de convergencia. No se verifican
      * valores de solución, solo que el método no convergió.
      */
-    private static void verificaJacobiSinDominanciaDiagonal() {
+    @Test
+    void verificaJacobiSinDominanciaDiagonal() {
         double[][] A = {{1, 2}, {3, 4}};
         double[] b = {3, 7}; // Jacobi diverge: matriz no diagonalmente dominante
 
         SistemaController c = new SistemaController();
         Resultado r = c.resolver(A, b, SistemaController.JACOBI);
 
-        chequea("sin dominancia exito", r.isExitoso());
-        chequea("sin dominancia es advertencia", r.isAdvertencia());
-        chequea("sin dominancia mensaje exacto", ADVERTENCIA_JACOBI.equals(r.getMensaje()));
-        chequea("sin dominancia traza no nula", r.getTraza() != null);
-        chequea("sin dominancia convergencia no nula", r.getConvergencia() != null);
+        assertTrue(r.isExitoso(), "sin dominancia exito");
+        assertTrue(r.isAdvertencia(), "sin dominancia es advertencia");
+        assertTrue(ADVERTENCIA_JACOBI.equals(r.getMensaje()), "sin dominancia mensaje exacto");
+        assertTrue(r.getTraza() != null, "sin dominancia traza no nula");
+        assertTrue(r.getConvergencia() != null, "sin dominancia convergencia no nula");
         if (r.getConvergencia() != null) {
-            chequea("sin dominancia jacobi divergio", !r.getConvergencia().convergio());
+            assertTrue(!r.getConvergencia().convergio(), "sin dominancia jacobi divergio");
         }
     }
 
@@ -159,54 +135,26 @@ public class SistemaControllerTest {
      * por lo que el controlador debe reportar ERROR —no un éxito falso—
      * con el mensaje de método no implementado y sin convergencia.
      */
-    private static void verificaGaussDirecto() {
+    @Test
+    void verificaGaussDirecto() {
     SistemaController c = new SistemaController();
     Resultado r = c.resolver(A_CANONICA, B_CANONICA, SistemaController.GAUSS);
 
-    chequea("gauss exito", r.isExitoso());
+    assertTrue(r.isExitoso(), "gauss exito");
 
     double[] esperado = {0.8, 1.4};
-    comparaVector("gauss solucion", r.getSolucion(), esperado);
+    assertArrayEquals(esperado, r.getSolucion(), 1e-6, "gauss solucion");
 
-    chequea("gauss traza no nula", r.getTraza() != null);
+    assertTrue(r.getTraza() != null, "gauss traza no nula");
     if (r.getTraza() != null) {
-        chequea("gauss traza con pasos", r.getTraza().totalPasos() > 0);
+        assertTrue(r.getTraza().totalPasos() > 0, "gauss traza con pasos");
     }
 
-    chequea("gauss sin convergencia (no iterativo)",
-            r.getConvergencia() == null);
+    assertTrue(r.getConvergencia() == null, "gauss sin convergencia (no iterativo)");
 }
 
-    // ── mini-framework de aserciones (sin dependencias) ──
-
-    private static void comparaVector(String nombre, double[] obtenido, double[] esperado) {
-        if (obtenido == null || esperado == null || obtenido.length != esperado.length) {
-            System.out.println("FALLO " + nombre + " (longitudes incompatibles)");
-            ok = false;
-            return;
-        }
-        boolean igual = true;
-        for (int i = 0; i < obtenido.length; i++) {
-            if (!(Math.abs(obtenido[i] - esperado[i]) < 1e-6)) {
-                System.out.printf("%s[%d] = %.6f FALLO (esperado %.6f)%n",
-                        nombre, i, obtenido[i], esperado[i]);
-                igual = false;
-            }
-        }
-        if (igual) {
-            System.out.printf("%s coincide con el resolutor (tolerancia 1e-6) OK%n", nombre);
-        } else {
-            ok = false;
-        }
-    }
-
-    private static void chequea(String nombre, boolean condicion) {
-        System.out.println((condicion ? "OK   " : "FALLO") + " " + nombre);
-        if (!condicion) {
-            ok = false;
-        }
-    }
-    private static void verificaGaussJordan() {
+    @Test
+    void verificaGaussJordan() {
     SistemaController c = new SistemaController();
 
     double[][] A = {
@@ -219,23 +167,24 @@ public class SistemaControllerTest {
 
     Resultado r = c.resolver(A, b, SistemaController.GAUSS_JORDAN);
 
-    chequea("gauss-jordan exito", r.isExitoso());
+    assertTrue(r.isExitoso(), "gauss-jordan exito");
 
     if (r.isExitoso()) {
         double[] esperado = {1, 2, 3};
-        comparaVector("gauss-jordan solucion", r.getSolucion(), esperado);
+        assertArrayEquals(esperado, r.getSolucion(), 1e-6, "gauss-jordan solucion");
 
-        chequea("gauss-jordan traza no nula", r.getTraza() != null);
+        assertTrue(r.getTraza() != null, "gauss-jordan traza no nula");
 
         if (r.getTraza() != null) {
-            chequea("gauss-jordan traza con pasos",
-                    r.getTraza().totalPasos() > 0);
+            assertTrue(r.getTraza().totalPasos() > 0,
+                    "gauss-jordan traza con pasos");
         }
     }
 
-    chequea("gauss-jordan sin convergencia", r.getConvergencia() == null);
+    assertTrue(r.getConvergencia() == null, "gauss-jordan sin convergencia");
 }
-private static void verificaCrout() {
+    @Test
+    void verificaCrout() {
     SistemaController c = new SistemaController();
 
     double[][] A = {
@@ -248,23 +197,24 @@ private static void verificaCrout() {
 
     Resultado r = c.resolver(A, b, SistemaController.CROUT);
 
-    chequea("crout exito", r.isExitoso());
+    assertTrue(r.isExitoso(), "crout exito");
 
     if (r.isExitoso()) {
         double[] esperado = {1, 2, 3};
-        comparaVector("crout solucion", r.getSolucion(), esperado);
+        assertArrayEquals(esperado, r.getSolucion(), 1e-6, "crout solucion");
 
-        chequea("crout traza no nula", r.getTraza() != null);
+        assertTrue(r.getTraza() != null, "crout traza no nula");
 
         if (r.getTraza() != null) {
-            chequea("crout traza con pasos",
-                    r.getTraza().totalPasos() > 0);
+            assertTrue(r.getTraza().totalPasos() > 0,
+                    "crout traza con pasos");
         }
     }
 
-    chequea("crout sin convergencia", r.getConvergencia() == null);
+    assertTrue(r.getConvergencia() == null, "crout sin convergencia");
 }
-private static void verificaCholesky() {
+    @Test
+    void verificaCholesky() {
     SistemaController c = new SistemaController();
 
     double[][] A = {
@@ -277,23 +227,24 @@ private static void verificaCholesky() {
 
     Resultado r = c.resolver(A, b, SistemaController.CHOLESKY);
 
-    chequea("cholesky exito", r.isExitoso());
+    assertTrue(r.isExitoso(), "cholesky exito");
 
     if (r.isExitoso()) {
         double[] esperado = {1, 2, 3};
-        comparaVector("cholesky solucion", r.getSolucion(), esperado);
+        assertArrayEquals(esperado, r.getSolucion(), 1e-6, "cholesky solucion");
 
-        chequea("cholesky traza no nula", r.getTraza() != null);
+        assertTrue(r.getTraza() != null, "cholesky traza no nula");
 
         if (r.getTraza() != null) {
-            chequea("cholesky traza con pasos",
-                    r.getTraza().totalPasos() > 0);
+            assertTrue(r.getTraza().totalPasos() > 0,
+                    "cholesky traza con pasos");
         }
     }
 
-    chequea("cholesky sin convergencia", r.getConvergencia() == null);
+    assertTrue(r.getConvergencia() == null, "cholesky sin convergencia");
 }
-private static void verificaGaussSingular() {
+    @Test
+    void verificaGaussSingular() {
     SistemaController c = new SistemaController();
 
     double[][] A = {
@@ -305,11 +256,12 @@ private static void verificaGaussSingular() {
 
     Resultado r = c.resolver(A, b, SistemaController.GAUSS);
 
-    chequea("gauss singular sin exito", !r.isExitoso());
-    chequea("gauss singular mensaje no nulo", r.getMensaje() != null);
-    chequea("gauss singular sin convergencia", r.getConvergencia() == null);
+    assertTrue(!r.isExitoso(), "gauss singular sin exito");
+    assertTrue(r.getMensaje() != null, "gauss singular mensaje no nulo");
+    assertTrue(r.getConvergencia() == null, "gauss singular sin convergencia");
 }
-private static void verificaGaussJordanSingular() {
+    @Test
+    void verificaGaussJordanSingular() {
     SistemaController c = new SistemaController();
 
     double[][] A = {
@@ -321,11 +273,12 @@ private static void verificaGaussJordanSingular() {
 
     Resultado r = c.resolver(A, b, SistemaController.GAUSS_JORDAN);
 
-    chequea("gauss-jordan singular sin exito", !r.isExitoso());
-    chequea("gauss-jordan singular mensaje no nulo", r.getMensaje() != null);
-    chequea("gauss-jordan singular sin convergencia", r.getConvergencia() == null);
+    assertTrue(!r.isExitoso(), "gauss-jordan singular sin exito");
+    assertTrue(r.getMensaje() != null, "gauss-jordan singular mensaje no nulo");
+    assertTrue(r.getConvergencia() == null, "gauss-jordan singular sin convergencia");
 }
-private static void verificaCroutPivoteNulo() {
+    @Test
+    void verificaCroutPivoteNulo() {
     SistemaController c = new SistemaController();
 
     double[][] A = {
@@ -337,11 +290,12 @@ private static void verificaCroutPivoteNulo() {
 
     Resultado r = c.resolver(A, b, SistemaController.CROUT);
 
-    chequea("crout pivote nulo sin exito", !r.isExitoso());
-    chequea("crout pivote nulo mensaje no nulo", r.getMensaje() != null);
-    chequea("crout pivote nulo sin convergencia", r.getConvergencia() == null);
+    assertTrue(!r.isExitoso(), "crout pivote nulo sin exito");
+    assertTrue(r.getMensaje() != null, "crout pivote nulo mensaje no nulo");
+    assertTrue(r.getConvergencia() == null, "crout pivote nulo sin convergencia");
 }
-private static void verificaCholeskyNoSimetrica() {
+    @Test
+    void verificaCholeskyNoSimetrica() {
     SistemaController c = new SistemaController();
 
     double[][] A = {
@@ -353,11 +307,12 @@ private static void verificaCholeskyNoSimetrica() {
 
     Resultado r = c.resolver(A, b, SistemaController.CHOLESKY);
 
-    chequea("cholesky no simetrica sin exito", !r.isExitoso());
-    chequea("cholesky no simetrica mensaje no nulo", r.getMensaje() != null);
-    chequea("cholesky no simetrica sin convergencia", r.getConvergencia() == null);
+    assertTrue(!r.isExitoso(), "cholesky no simetrica sin exito");
+    assertTrue(r.getMensaje() != null, "cholesky no simetrica mensaje no nulo");
+    assertTrue(r.getConvergencia() == null, "cholesky no simetrica sin convergencia");
 }
-private static void verificaCholeskyNoDefinidaPositiva() {
+    @Test
+    void verificaCholeskyNoDefinidaPositiva() {
     SistemaController c = new SistemaController();
 
     double[][] A = {
@@ -369,9 +324,9 @@ private static void verificaCholeskyNoDefinidaPositiva() {
 
     Resultado r = c.resolver(A, b, SistemaController.CHOLESKY);
 
-    chequea("cholesky no definida positiva sin exito", !r.isExitoso());
-    chequea("cholesky no definida positiva mensaje no nulo", r.getMensaje() != null);
-    chequea("cholesky no definida positiva sin convergencia", r.getConvergencia() == null);
+    assertTrue(!r.isExitoso(), "cholesky no definida positiva sin exito");
+    assertTrue(r.getMensaje() != null, "cholesky no definida positiva mensaje no nulo");
+    assertTrue(r.getConvergencia() == null, "cholesky no definida positiva sin convergencia");
 }
 
 
