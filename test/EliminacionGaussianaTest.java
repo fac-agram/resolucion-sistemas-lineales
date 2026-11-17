@@ -2,23 +2,14 @@
 import unsa.sistemas.model.direct.EliminacionGaussiana;
 import unsa.sistemas.model.trace.Traza;
 
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
 public class EliminacionGaussianaTest {
 
-    private static boolean ok = true;
-
-    public static void main(String[] args) {
-
-        verificaSolucion();
-        verificaTraza();
-        verificaSistemaSingular();
-        verificaPivoteo();
-
-        System.out.println(ok ? "TEST_OK" : "TEST_FALLO");
-        System.exit(ok ? 0 : 1);
-    }
-
     // Sistema con solución exacta [1, 2, 3]
-    private static void verificaSolucion() {
+    @Test
+    void verificaSolucion() {
 
         double[][] A = {
             {4, 2, 2},
@@ -30,13 +21,14 @@ public class EliminacionGaussianaTest {
 
         double[] x = new EliminacionGaussiana(A, b, 3).resolver();
 
-        compara("x1", x[0], 1.0);
-        compara("x2", x[1], 2.0);
-        compara("x3", x[2], 3.0);
+        assertEquals(1.0, x[0], 1e-6, "x1");
+        assertEquals(2.0, x[1], 1e-6, "x2");
+        assertEquals(3.0, x[2], 1e-6, "x3");
     }
 
     // Comprueba que se registren los pasos
-    private static void verificaTraza() {
+    @Test
+    void verificaTraza() {
 
         Traza traza = new Traza();
 
@@ -53,14 +45,15 @@ public class EliminacionGaussianaTest {
 
         gauss.resolver();
 
-        chequea("traza no vacia", !traza.estaVacia());
-        chequea("cantidad de pasos > 0", traza.totalPasos() > 0);
+        assertTrue(!traza.estaVacia(), "traza no vacia");
+        assertTrue(traza.totalPasos() > 0, "cantidad de pasos > 0");
     }
 
     // Una matriz singular no debe permitir resolver el sistema
-    private static void verificaSistemaSingular() {
+    @Test
+    void verificaSistemaSingular() {
 
-        try {
+        assertThrows(ArithmeticException.class, () -> {
 
             double[][] A = {
                 {1, 2},
@@ -71,39 +64,11 @@ public class EliminacionGaussianaTest {
 
             new EliminacionGaussiana(A, b, 2).resolver();
 
-            chequea("matriz singular detectada", false);
-
-        } catch (ArithmeticException e) {
-
-            chequea("matriz singular detectada", true);
-
-        }
+        }, "matriz singular detectada");
     }
 
-    // Comparación numérica
-    private static void compara(String nombre, double obtenido, double esperado) {
-
-        if (Math.abs(obtenido - esperado) < 1e-6) {
-            System.out.printf("%s = %.6f OK%n", nombre, obtenido);
-        } else {
-            System.out.printf(
-                "%s = %.6f FALLO (esperado %.6f)%n",
-                nombre, obtenido, esperado
-            );
-            ok = false;
-        }
-    }
-
-    // Verificación lógica
-    private static void chequea(String nombre, boolean condicion) {
-
-        System.out.println((condicion ? "OK   " : "FALLO") + " " + nombre);
-
-        if (!condicion) {
-            ok = false;
-        }
-    }
-    private static void verificaPivoteo() {
+    @Test
+    void verificaPivoteo() {
 
     double[][] A = {
         {0, 2},
@@ -114,7 +79,7 @@ public class EliminacionGaussianaTest {
 
     double[] x = new EliminacionGaussiana(A, b, 2).resolver();
 
-    compara("pivoteo x1", x[0], 1.0);
-    compara("pivoteo x2", x[1], 2.0);
+    assertEquals(1.0, x[0], 1e-6, "pivoteo x1");
+    assertEquals(2.0, x[1], 1e-6, "pivoteo x2");
 }
 }
