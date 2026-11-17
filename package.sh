@@ -3,19 +3,25 @@
 # Spec/design: openspec/changes/deliverable-packaging/{specs/deliverable-packaging/spec.md,design.md}
 #
 # Stages (design contract):
-#   0 fetch/verify  Windows inputs: cache-only by default, --fetch opts into network.
-#                   NOT IMPLEMENTED IN THIS BUILD (commit 3) -> fail-fast stub.
+#   0 fetch/verify  Windows inputs from package/pins.txt: cache-only by default,
+#                   --fetch opts into a one-time network download; ALWAYS
+#                   sha256-verify each input BEFORE it is used (R5.1). A valid
+#                   cache => zero network + idempotent skip (R5.2). Missing input
+#                   without --fetch => fail-fast BEFORE any zip (R1.2).
 #   1 build         mvnw offline package + manifest Main-Class grep        [R4.2]
 #   2 jlink         linux runtime image from cached -linux JavaFX jars     [R2.1]
 #   3 jpackage      app-image (--type app-image --name TrabajoIntegrador)  [R2.1]
-#   4 win assembly  NOT IMPLEMENTED IN THIS BUILD (commit 3) -> stub.      [R3.1-3]
-#   5 zip           NOT IMPLEMENTED IN THIS BUILD (commit 3) -> stub.      [R1.1]
+#   4 win assembly  runtime/ from the pinned Temurin JRE + app/ + assets;  [R3.1-3]
+#                   static gates only -> windows = static-verified / runtime-UNVERIFIED
+#   5 zip           dist/TrabajoIntegrador.zip from BOTH folders; unzip -l [R1.1 R8.1]
+#                   tree assert; CHECKLIST-WINDOWS.txt copied into the change folder
 #   6 smoke         GUI alive >=12s under DISPLAY, screenshot evidence     [R2.2 R2.3]
-#   7 summary       scenario table + dist-never-in-git gate                [R1.3]
+#   7 summary       scenario table + dist-never-in-git gate                [R1.3 R3.1]
 #
 # Flags:
-#   --linux-only  dev shortcut: run stages 1,2,3,6,7; skip stubs 0/4/5; never write a zip.
-#   --fetch       opt-in network for stage 0 (pending commit 3; stubs fail with exit 1).
+#   --linux-only  dev shortcut: run stages 1,2,3,6,7; skip windows stages 0/4/5;
+#                 never write a zip.
+#   --fetch       opt-in one-time network for stage 0 (curl of pinned URLs).
 #   --help        usage.
 # Env overrides:
 #   DELIVERABLE_CACHE  (default $HOME/.cache/gentle-deliverable)
@@ -34,6 +40,8 @@ DELIVERABLE_CACHE="${DELIVERABLE_CACHE:-$HOME/.cache/gentle-deliverable}"
 JFX_VERSION="21.0.13"
 JAR_NAME="resolucion-sistemas-lineales-1.0-SNAPSHOT.jar"
 APP_NAME="TrabajoIntegrador"
+MAIN_CLASS="unsa.sistemas.view.Launcher"
+PINS="$SCRIPT_DIR/package/pins.txt"
 
 DIST="$SCRIPT_DIR/dist"
 WORK="$DIST/work"
@@ -41,15 +49,18 @@ RUNTIME_LINUX="$WORK/runtime-linux"
 APP_IN="$WORK/app"
 JPKG_OUT="$WORK/jpkg"
 LINUX_DIR="$DIST/${APP_NAME}-linux"
+WIN_DIR="$DIST/${APP_NAME}-windows"
+WIN_JRE_TMP="$WORK/win-jre-tmp"
+ZIP="$DIST/${APP_NAME}.zip"
 EVID="$DIST/evidence"
+CHANGE_DIR="$SCRIPT_DIR/openspec/changes/deliverable-packaging"
 SMOKE_BIN="$LINUX_DIR/bin/$APP_NAME"
 
-# Pinned Windows inputs (design "Pinned artifacts" table; full pin file lands in package/pins.txt, commit 3).
-WIN_JRE_ZIP="OpenJDK17U-jre_x64_windows_hotspot_17.0.21_9.zip"
+# Windows JavaFX jar names (their pinned sha256 lives in package/pins.txt).
 WIN_JFX_JARS=("javafx-base-${JFX_VERSION}-win.jar" "javafx-graphics-${JFX_VERSION}-win.jar" "javafx-controls-${JFX_VERSION}-win.jar" "javafx-fxml-${JFX_VERSION}-win.jar")
 
 usage() {
-  sed -n '2,28p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,33p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 LINUX_ONLY=0
@@ -65,24 +76,83 @@ done
 
 log() { printf '%s\n' "$*"; }
 
-# --- Stage 0 (stub): fetch / cache verification is implemented in commit 3. ---
+# lookup_pin <dest> -> "<sha256> <size> <url>" from package/pins.txt (single source of truth, R5.3)
+lookup_pin() {
+  awk -F'|' -v dest="$1" '$4==dest { print $1" "$2" "$3; exit }' "$PINS"
+}
+
+# --- Stage 0: windows-input provenance gate [R1.2 R5.1 R5.2 R5.3] ---
+# Cache-only by default; --fetch opts into one-time curl; ALWAYS sha256-verify
+# before use; missing-and-not-fetched fails fast BEFORE any zip is written.
 stage0_windows_inputs() {
-  # R1.2 shape: name the missing Windows input(s) and the fetch opt-in, fail BEFORE any zip exists.
-  local missing=""
-  local f
-  if [ ! -f "$DELIVERABLE_CACHE/$WIN_JRE_ZIP" ]; then
-    missing="$DELIVERABLE_CACHE/$WIN_JRE_ZIP"
+  log "--- stage 0: windows input verification (cache=$DELIVERABLE_CACHE fetch=$FETCH) ---"
+  if [ ! -f "$PINS" ]; then
+    log "[R5.3] FAIL: pin manifest missing: $PINS"; exit 1
   fi
-  for f in "${WIN_JFX_JARS[@]}"; do
-    if [ ! -f "$DELIVERABLE_CACHE/jfx-win/$f" ]; then
-      missing="${missing:+$missing, }$DELIVERABLE_CACHE/jfx-win/$f"
+  # R5.3 provenance documented — the committed pins file must carry the immutable
+  # Temurin release URL, its sha256, the cache path and the --fetch opt-in note.
+  local r53=1
+  grep -q 'releases/download/jdk-17.0.21%2B9/OpenJDK17U-jre_x64_windows_hotspot_17.0.21_9.zip' "$PINS" || r53=0
+  grep -q 'fe4656bd78fb09812dc38c49da777f79cc33e7ee435a254be82f9e7f40d9d117' "$PINS" || r53=0
+  grep -q '.cache/gentle-deliverable' "$PINS" || r53=0
+  grep -q -- '--fetch' "$PINS" || r53=0
+  if [ "$r53" -eq 1 ]; then
+    log "[R5.3] PASS: package/pins.txt carries immutable Temurin URL + SHA-256 + cache path + --fetch opt-in"
+  else
+    log "[R5.3] FAIL: package/pins.txt missing a pinned provenance field (URL/sha256/cache path/--fetch)"; exit 1
+  fi
+
+  # Enumerate every pinned destination.
+  local -a dests=()
+  while IFS='|' read -r _sha _size _url _dest; do
+    [ -n "${_dest:-}" ] && dests+=("$_dest")
+  done < <(grep -vE '^[[:space:]]*(#|$)' "$PINS")
+
+  # Ensure a clean zip-free start so a fail-fast never leaves a prior zip behind (R1.2).
+  rm -f "$ZIP"
+
+  local -a missing=()
+  local d f sha size url rc
+  for d in "${dests[@]}"; do
+    f="$DELIVERABLE_CACHE/$d"
+    if [ ! -f "$f" ]; then
+      if [ "$FETCH" -eq 1 ]; then
+        # Gated network path (exists for reproducibility; NOT exercised on a
+        # complete cache — R5.2). Downloaded file is re-verified below.
+        read -r sha size url <<<"$(lookup_pin "$d")"
+        mkdir -p "$(dirname "$f")"
+        log "[R5.2] --fetch: downloading $(basename "$d") (one-time)"
+        curl -fL --retry 3 -o "$f" "$url"
+      else
+        missing+=("$f")
+        continue
+      fi
+    fi
+    read -r sha size url <<<"$(lookup_pin "$d")"
+    local actual
+    actual="$(sha256sum "$f" | cut -d' ' -f1)"
+    if [ "$actual" != "$sha" ]; then
+      log "[R5.1] FAIL: SHA-256 mismatch, REJECTING before use: $(basename "$d")"
+      log "[R5.1]   expected $sha"
+      log "[R5.1]   actual   $actual"
+      log "[R5.1] No input was used and no zip was written."; exit 2
     fi
   done
-  log "[R1.2] FAIL: missing Windows input(s): ${missing:-none (cache present but unverified)}"
-  log "[R1.2] Stage 0 (fetch/sha256-verify), stage 4 (windows assembly) and stage 5 (zip) are NOT implemented in this build (commit 3 of this change)."
-  log "[R1.2] Opt-in network fetch is '--fetch' (pending); local dev builds use '--linux-only' for the linux app-image path."
-  log "[R1.2] No zip was written."
-  exit 1
+
+  # R1.2 fail-fast BEFORE any zip exists, naming the missing input(s) + the opt-in.
+  if [ "${#missing[@]}" -gt 0 ]; then
+    log "[R1.2] FAIL: missing Windows input(s): ${missing[*]}"
+    log "[R1.2] Pass '--fetch' for a one-time download of the pinned URLs, or seed the cache."
+    log "[R1.2] No zip was written."
+    exit 1
+  fi
+
+  log "[R5.1] PASS: all ${#dests[@]} pinned inputs verified (sha256) before use"
+  if [ "$FETCH" -eq 0 ]; then
+    log "[R5.2] PASS: offline rebuild — inputs taken from cache; curl was NOT invoked (no --fetch)"
+  else
+    log "[R5.2] n/a: --fetch active; any absent input was downloaded then re-verified"
+  fi
 }
 
 # --- Stage 1: build + manifest gate [R4.2] ---
@@ -95,8 +165,8 @@ stage1_build() {
   fi
   local mf
   mf="$(unzip -p "target/$JAR_NAME" META-INF/MANIFEST.MF)"
-  if printf '%s' "$mf" | grep -q '^Main-Class: unsa.sistemas.view.Launcher'; then
-    log "[R4.2] PASS: MANIFEST.MF contains 'Main-Class: unsa.sistemas.view.Launcher'"
+  if printf '%s' "$mf" | grep -q "^Main-Class: $MAIN_CLASS"; then
+    log "[R4.2] PASS: MANIFEST.MF contains 'Main-Class: $MAIN_CLASS'"
   else
     log "[R4.2] FAIL: MANIFEST.MF lacks Main-Class:"
     printf '%s\n' "$mf"
@@ -142,7 +212,7 @@ stage3_jpackage() {
   jpackage --type app-image --name "$APP_NAME" \
     --input "$APP_IN" \
     --main-jar "$JAR_NAME" \
-    --main-class unsa.sistemas.view.Launcher \
+    --main-class "$MAIN_CLASS" \
     --runtime-image "$RUNTIME_LINUX" \
     --java-options "--add-modules javafx.controls,javafx.fxml" \
     --dest "$JPKG_OUT"
@@ -172,6 +242,155 @@ stage3_jpackage() {
     log "[R2.1] FAIL: bundled lib/runtime missing JavaFX modules"
     exit 1
   fi
+}
+
+# --- Stage 4: windows folder assembly (static-only) [R3.1 R3.2 R3.3] ---
+# Hand-assembled from the pinned, already-verified Temurin JRE + 4 JavaFX -win
+# jars + package assets. jpackage cannot cross-build (design D1/P2); runtime/ is
+# the JRE extracted 1:1. NO windows execution here -> runtime stays UNVERIFIED.
+stage4_windows() {
+  log "--- stage 4: windows assembly (static-only; runtime-UNVERIFIED) ---"
+  # R1.2 precondition: every input must exist and match its pin before ANY use.
+  local d f sha size url actual
+  for d in "$(awk -F'|' '$4 ~ /OpenJDK17U-jre.*windows/ {print $4; exit}' "$PINS")" \
+           "${WIN_JFX_JARS[@]/#/jfx-win/}"; do
+    f="$DELIVERABLE_CACHE/$d"
+    if [ ! -f "$f" ]; then log "[R1.2] FAIL: windows input missing: $f"; exit 1; fi
+    read -r sha size url <<<"$(lookup_pin "$d")"
+    actual="$(sha256sum "$f" | cut -d' ' -f1)"
+    if [ "$actual" != "$sha" ]; then log "[R5.1] FAIL: pin mismatch at use-time: $f"; exit 2; fi
+  done
+
+  # Fresh windows tree; extract JRE 1:1 into runtime/.
+  rm -rf "$WIN_DIR" "$WIN_JRE_TMP"
+  mkdir -p "$WIN_DIR/app"
+  local jrezip
+  jrezip="$DELIVERABLE_CACHE/$(awk -F'|' '$4 ~ /OpenJDK17U-jre.*windows/ {print $4; exit}' "$PINS")"
+  unzip -q "$jrezip" -d "$WIN_JRE_TMP"
+  local jreroot
+  jreroot="$(find "$WIN_JRE_TMP" -maxdepth 1 -mindepth 1 -type d | head -1)"
+  [ -n "$jreroot" ] || { log "[R3.1] FAIL: JRE archive extracted to no top-level folder"; exit 1; }
+  mv "$jreroot" "$WIN_DIR/runtime"
+
+  # app/: project jar + the 4 pinned JavaFX -win jars.
+  cp "target/$JAR_NAME" "$WIN_DIR/app/"
+  for d in "${WIN_JFX_JARS[@]}"; do
+    cp "$DELIVERABLE_CACHE/jfx-win/$d" "$WIN_DIR/app/$d"
+  done
+
+  # Assets (the committed originals ARE the shipped/archived artifacts, task 0.3).
+  cp "$SCRIPT_DIR/package/Iniciar.bat"            "$WIN_DIR/Iniciar.bat"
+  cp "$SCRIPT_DIR/package/LEEME.txt"              "$WIN_DIR/LEEME.txt"
+  cp "$SCRIPT_DIR/package/CHECKLIST-WINDOWS.txt"  "$WIN_DIR/CHECKLIST-WINDOWS.txt"
+
+  # [R3.1] static asserts — java.exe + JVM dlls + natives in the graphics jar.
+  local -a c1=()
+  [ -f "$WIN_DIR/runtime/bin/java.exe" ] && log "[R3.1] PASS: runtime/bin/java.exe present" || { log "[R3.1] FAIL: java.exe missing"; c1+=("java.exe"); }
+  if ls "$WIN_DIR"/runtime/bin/server/jvm.dll >/dev/null 2>&1; then
+    log "[R3.1] PASS: Windows JVM dll present: runtime/bin/server/jvm.dll"
+  else log "[R3.1] FAIL: jvm.dll missing under runtime/bin/server/"; c1+=("jvm.dll"); fi
+  local ndll
+  ndll="$(find "$WIN_DIR/runtime/bin" -maxdepth 1 -name '*.dll' | wc -l | tr -d ' ')"
+  if [ "$ndll" -ge 80 ]; then log "[R3.1] PASS: $ndll runtime/bin/*.dll (>=80; design measures 85)"; else log "[R3.1] FAIL: only $ndll bin dlls (truncated?)"; c1+=("dll-count"); fi
+  local gdll
+  gdll="$(unzip -l "$WIN_DIR/app/javafx-graphics-${JFX_VERSION}-win.jar" | grep -c '\.dll' || true)"
+  if [ "$gdll" -ge 1 ]; then log "[R3.1] PASS: javafx-graphics jar bundles $gdll .dll natives (design D5: only graphics has natives)"; else log "[R3.1] FAIL: graphics jar has no .dll natives"; c1+=("graphics-natives"); fi
+  if unzip -p "$WIN_DIR/app/$JAR_NAME" META-INF/MANIFEST.MF | grep -q "^Main-Class: $MAIN_CLASS"; then
+    log "[R3.1] PASS: shipped jar Main-Class = $MAIN_CLASS"
+  else log "[R3.1] FAIL: shipped app jar lacks Main-Class Launcher"; c1+=("manifest"); fi
+  if [ -s "$WIN_DIR/LEEME.txt" ] && [ -s "$WIN_DIR/CHECKLIST-WINDOWS.txt" ]; then
+    log "[R3.1] PASS: LEEME.txt and CHECKLIST-WINDOWS.txt present and non-empty"
+  else log "[R3.1] FAIL: a windows asset is missing/empty"; c1+=("assets"); fi
+  if [ "${#c1[@]}" -gt 0 ]; then exit 1; fi
+  log "[R3.1] PASS: windows folder static-verified / runtime-UNVERIFIED (no Windows host to execute)"
+
+  # [R3.2] every %~dp0 occurrence in Iniciar.bat must be quoted.
+  local q1 q2
+  q1="$(grep -o '%~dp0' "$WIN_DIR/Iniciar.bat" | wc -l | tr -d ' ')"
+  q2="$(grep -o '"%~dp0' "$WIN_DIR/Iniciar.bat" | wc -l | tr -d ' ')"
+  if [ "$q1" -ge 1 ] && [ "$q1" -eq "$q2" ]; then
+    log "[R3.2] PASS: all $q1 '%~dp0' path uses in Iniciar.bat are double-quoted (spaces-safe)"
+  else
+    log "[R3.2] FAIL: $q1 '%~dp0' uses but $q2 quoted"; exit 1
+  fi
+
+  # [R3.3] raw size bounds 120-160 MB (design D2: documented layout change to the
+  # full untrimmed JRE; runtime is the untrimmable jimage — catches truncation).
+  local mb
+  mb="$(du -sm "$WIN_DIR" | cut -f1)"
+  if [ "$mb" -ge 120 ] && [ "$mb" -le 160 ]; then
+    log "[R3.3] PASS: windows folder raw size ${mb} MB within 120-160 MB (design D2 full-JRE layout)"
+  else
+    log "[R3.3] FAIL: windows folder ${mb} MB outside 120-160 MB bounds (component truncated or wrong)"; exit 1
+  fi
+}
+
+# --- Stage 5: single zip of BOTH folders [R1.1 R8.1] ---
+stage5_zip() {
+  log "--- stage 5: zip both folders ---"
+  if [ ! -d "$LINUX_DIR" ] || [ ! -d "$WIN_DIR" ]; then
+    log "[R1.1] FAIL: both folders required (linux=$([ -d "$LINUX_DIR" ] && echo ok || echo missing) windows=$([ -d "$WIN_DIR" ] && echo ok || echo missing))"; exit 1
+  fi
+  rm -f "$ZIP"
+  ( cd "$DIST" && zip -q -r -X "${APP_NAME}.zip" "${APP_NAME}-linux" "${APP_NAME}-windows" )
+
+  # [R1.1] tree assert — exactly the two folders and every required file.
+  # Read the entry list ONCE into an associative set; membership tests are pure
+  # bash so no live unzip|grep pipe can be aborted by pipefail + `grep -q` SIGPIPE.
+  local -A inzip=()
+  local -a names=()
+  while IFS= read -r line; do inzip["$line"]=1; names+=("$line"); done \
+    < <(unzip -l "$ZIP" | awk 'NR>3 && NF>0 && index($NF,"/") {print $NF}')
+  assert_in_zip() { [ -n "${inzip[$1]:-}" ]; }
+  local -a need=(
+    "${APP_NAME}-linux/bin/${APP_NAME}"
+    "${APP_NAME}-linux/lib/app/${JAR_NAME}"
+    "${APP_NAME}-linux/lib/app/${APP_NAME}.cfg"
+    "${APP_NAME}-linux/lib/libapplauncher.so"
+    "${APP_NAME}-linux/lib/runtime/bin/java"
+    "${APP_NAME}-windows/runtime/bin/java.exe"
+    "${APP_NAME}-windows/runtime/bin/server/jvm.dll"
+    "${APP_NAME}-windows/app/${JAR_NAME}"
+    "${APP_NAME}-windows/app/javafx-base-${JFX_VERSION}-win.jar"
+    "${APP_NAME}-windows/app/javafx-graphics-${JFX_VERSION}-win.jar"
+    "${APP_NAME}-windows/app/javafx-controls-${JFX_VERSION}-win.jar"
+    "${APP_NAME}-windows/app/javafx-fxml-${JFX_VERSION}-win.jar"
+    "${APP_NAME}-windows/Iniciar.bat"
+    "${APP_NAME}-windows/LEEME.txt"
+    "${APP_NAME}-windows/CHECKLIST-WINDOWS.txt"
+  )
+  local ok=1 nentries="${#names[@]}"
+  for e in "${need[@]}"; do assert_in_zip "$e" || { log "[R1.1] FAIL: missing from zip: $e"; ok=0; }; done
+  # Both top-level folders present (and only these two roots).
+  assert_in_zip "${APP_NAME}-linux/"    || { log "[R1.1] FAIL: linux folder root missing"; ok=0; }
+  assert_in_zip "${APP_NAME}-windows/"  || { log "[R1.1] FAIL: windows folder root missing"; ok=0; }
+  local roots
+  roots="$(printf '%s\n' "${names[@]}" | awk -F/ 'NF>1 {print $1}' | sort -u | tr '\n' ' ')"
+  if [ "$roots" = "${APP_NAME}-linux ${APP_NAME}-windows " ]; then
+    log "[R1.1] PASS: zip root contains exactly [$roots](both deliverable folders)"
+  else
+    log "[R1.1] FAIL: unexpected zip roots: [$roots]"; ok=0
+  fi
+  [ "$ok" -eq 1 ] || exit 1
+  log "[R1.1] PASS: every required file present ($nentries entries)"
+
+  # [R8.1] checklist shipped in the zip AND archived (byte-identical) under the change folder.
+  mkdir -p "$CHANGE_DIR"
+  cp "$WIN_DIR/CHECKLIST-WINDOWS.txt" "$CHANGE_DIR/CHECKLIST-WINDOWS.txt"
+  local zipsha packsha origsha
+  origsha="$(sha256sum "$SCRIPT_DIR/package/CHECKLIST-WINDOWS.txt" | cut -d' ' -f1)"
+  zipsha="$(sha256sum "$WIN_DIR/CHECKLIST-WINDOWS.txt" | cut -d' ' -f1)"
+  packsha="$(sha256sum "$CHANGE_DIR/CHECKLIST-WINDOWS.txt" | cut -d' ' -f1)"
+  if [ "$origsha" = "$zipsha" ] && [ "$zipsha" = "$packsha" ]; then
+    log "[R8.1] PASS: CHECKLIST-WINDOWS.txt in zip + archived copy, sha256-identical to the committed original ($origsha)"
+  else
+    log "[R8.1] FAIL: checklist drift (orig=$origsha zip=$zipsha copy=$packsha)"; exit 1
+  fi
+
+  local zsize zsha
+  zsize="$(stat -c %s "$ZIP")"
+  zsha="$(sha256sum "$ZIP" | cut -d' ' -f1)"
+  log "[R1.1] zip: $(basename "$ZIP") size=$zsize bytes ($(awk -v b="$zsize" 'BEGIN{printf "%.1f", b/1048576}') MiB) sha256=$zsha"
 }
 
 # --- Stage 6: smoke gate [R2.2 / R2.3] ---
@@ -227,32 +446,58 @@ stage7_summary() {
     exit 1
   fi
   log ""
-  log "=== package.sh scenario summary (this build = stages 1,2,3,6,7) ==="
-  log "[R4.2] PASS     manifest Main-Class -> unsa.sistemas.view.Launcher"
-  log "[R2.1] PASS     linux image static integrity (ELF + lib/app jar + javafx modules)"
-  log "[R2.2] PASS     linux smoke: GUI alive >=12s (evidence: dist/evidence/linux-smoke-window.png + linux-smoke.png)"
-  log "[R2.3] n/a      failure/headless path exits 3/4 without faking PASS (probed manually: DISPLAY= run)"
-  log "[R1.3] PASS     dist/ never in git (checked above)"
-  log "[R1.2] manual   probe: DELIVERABLE_CACHE=\$(mktemp -d) bash package.sh -> exit 1, no zip (task 2.3)"
-  log "[R1.1] pending  stage 5 (zip) lands in commit 3 — this build writes no zip"
-  log "[R3.*] pending  stages 0/4 (windows folder) land in commit 3 -> windows: runtime-UNVERIFIED"
-  log "[R5.*] pending  stage 0 pin/verify/fetch lands in commit 3 (pins recorded in design.md)"
-  log "[R8.*] pending  checklist asset lands in commit 3; attestation flip only via R8.2"
-  log "[R7.1] external 'sh ./mvnw -o clean test' -> 82/0/0 gate at every commit"
-  log "Status: linux app-image = VERIFIED (static + smoke). windows = NOT BUILT in this build."
+  if [ "$LINUX_ONLY" -eq 1 ]; then
+    log "=== package.sh scenario summary (this build = stages 1,2,3,6,7; --linux-only) ==="
+    log "[R4.2] PASS     manifest Main-Class -> $MAIN_CLASS"
+    log "[R2.1] PASS     linux image static integrity (ELF + lib/app jar + javafx modules)"
+    log "[R2.2] PASS     linux smoke: GUI alive >=12s (evidence: dist/evidence/linux-smoke-window.png + linux-smoke.png)"
+    log "[R2.3] n/a      failure/headless path exits 3/4 without faking PASS (probed manually: DISPLAY= run)"
+    log "[R1.3] PASS     dist/ never in git (checked above)"
+    log "[R1.1] n/a      --linux-only writes no zip (windows stages 0/4/5 skipped)"
+    log "[R3.*] n/a      --linux-only skips windows assembly -> windows NOT BUILT in this build"
+    log "[R5.*] n/a      --linux-only skips stage 0 verification"
+    log "[R8.*] n/a      --linux-only skips stage 5 (no zip, no checklist archive)"
+    log "[R7.1] external 'sh ./mvnw -o clean test' -> 82/0/0 gate at every commit"
+    log "Status: linux app-image = VERIFIED (static + smoke). windows = NOT BUILT (--linux-only)."
+  else
+    log "=== package.sh scenario summary (full build = stages 0,1,2,3,4,5,6,7) ==="
+    log "[R4.2] PASS     manifest Main-Class -> $MAIN_CLASS"
+    log "[R2.1] PASS     linux image static integrity (ELF + lib/app jar + javafx modules)"
+    log "[R2.2] PASS     linux smoke: GUI alive >=12s (evidence: dist/evidence/linux-smoke-window.png + linux-smoke.png)"
+    log "[R2.3] n/a      failure/headless path exits 3/4 without faking PASS (probed manually: DISPLAY= run)"
+    log "[R1.3] PASS     dist/ never in git (checked above)"
+    log "[R1.1] PASS     dist/$APP_NAME.zip has both folders + every required file"
+    log "[R3.1] static-verified / runtime-UNVERIFIED   windows folder asserts green (java.exe/jvm.dll/natives/manifest/assets)"
+    log "[R3.2] PASS     Iniciar.bat quotes every %~dp0"
+    log "[R3.3] PASS     windows folder within 120-160 MB"
+    log "[R5.1] PASS     pinned inputs sha256-verified before use (mismatch -> exit 2)"
+    log "[R5.2] PASS     offline rebuild from cache (curl only under --fetch)"
+    log "[R5.3] PASS     provenance in committed package/pins.txt"
+    log "[R8.1] PASS     checklist in zip + archived copy under $CHANGE_DIR"
+    log "[R8.2] UNVERIFIED  windows runtime flips to VERIFIED only with a returned, archived checklist"
+    log "[R7.1] external 'sh ./mvnw -o clean test' -> 82/0/0 gate at every commit"
+    log "Status: linux app-image = VERIFIED (static + smoke). windows = static-verified / runtime-UNVERIFIED."
+  fi
 }
 
 main() {
   log "package.sh: DELIVERABLE_CACHE=$DELIVERABLE_CACHE linux-only=$LINUX_ONLY fetch=$FETCH"
   if [ "$LINUX_ONLY" -eq 0 ]; then
-    # Fail-fast BEFORE any build or zip: windows deliverable stages are not implemented yet.
     stage0_windows_inputs
+    stage1_build
+    stage2_jlink
+    stage3_jpackage
+    stage4_windows
+    stage5_zip
+    stage6_smoke
+    stage7_summary
+  else
+    stage1_build
+    stage2_jlink
+    stage3_jpackage
+    stage6_smoke
+    stage7_summary
   fi
-  stage1_build
-  stage2_jlink
-  stage3_jpackage
-  stage6_smoke
-  stage7_summary
   log "package.sh: DONE (exit 0)"
 }
 

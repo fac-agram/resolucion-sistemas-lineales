@@ -1,0 +1,46 @@
+TrabajoIntegrador - LEEME (Windows)
+===================================
+
+GRACIAS POR DESCARGAR ESTA APLICACION
+Sistema de resolucion de ecuaciones lineales (metodos directos e iterativos).
+Proyecto academico UNSA.
+
+NO NECESITAS INSTALAR NADA
+Esta carpeta ya incluye el entorno de ejecucion (Java) dentro de "runtime".
+No hace falta tener Java, ni Maven, ni conexion a internet para usarla.
+
+COMO ABRIRLA
+1. Descomprime el ZIP "TrabajoIntegrador.zip" en una carpeta cualquiera
+   (por ejemplo en el Escritorio). Puedes usar el boton derecho > "Extraer
+   todo" de Windows.
+2. Entra en la carpeta "TrabajoIntegrador-windows".
+3. Haz doble clic en el archivo "Iniciar.bat".
+4. Se abrira la ventana de la aplicacion. Tambien se abre una ventana de
+   consola detras: dejala abierta mientras uses el programa, es normal y
+   sirve para mostrar mensajes si algo falla. Para cerrar la aplicacion,
+   cierra la ventana principal; la consola se cierra sola.
+
+QUE VERAS EN PANTALLA
+- Un area para escribir la matriz de coeficientes y el vector de resultados.
+- Un selector con los metodos: Gauss, Gauss-Jordan, Crout, Cholesky, Jacobi,
+  Gauss-Seidel, SOR, relajacion simple y mejoramiento iterativo.
+- Botones para resolver, limpiar y cargar un sistema desde un archivo de
+  texto (.txt).
+- Paneles con el resultado, el traza del procedimiento y el estado.
+
+SI WINDOWS BLOQUEA LA ABRIR
+Al ser una aplicacion sin firma digital, Windows podria mostrar un aviso
+azul "SmartScreen". Es esperado en copias por USB o descargas. Pulsa en
+"Mas informacion" y luego en "Ejecutar de todos modos". Esto solo pasa la
+primera vez.
+
+SI ALGO NO FUNCIONA
+- Deja abierta la ventana de consola: ahi aparece el mensaje de error.
+- Copia ese mensaje y completa el archivo "CHECKLIST-WINDOWS.txt".
+- Envialo a quien te paso la aplicacion para poder corregirlo.
+
+NOTA
+Esta version para Windows se arma de forma automatica a partir de componentes
+verificados por su huella digital (hash). En la maquina que la genero NO es
+posible ejecutar Windows, por eso su funcionamiento ahi sigue PENDIENTE de
+confirmacion (ver CHECKLIST-WINDOWS.txt). La version de Linux si esta probada.

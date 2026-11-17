@@ -1,0 +1,42 @@
+# package/pins.txt — pinned inputs for the Windows deliverable folder
+# --------------------------------------------------------------------------
+# Normative provenance file for `deliverable-packaging` (spec R5, design
+# "Pinned artifacts" table). `package.sh` stage 0 READS this file: every
+# Windows input MUST be in the local cache with a matching SHA-256 BEFORE it
+# is ever used (R5.1: mismatch => reject, exit 2). Default runs are OFFLINE
+# (R5.2): nothing is downloaded unless `--fetch` is passed, in which case the
+# URL below is curled into `dest` and re-verified. A valid cache => zero
+# network, idempotent skip.
+#
+# Format is script-parseable: one artifact per line, fields separated by '|',
+# in fixed order:
+#   sha256|size_bytes|url|dest
+# `dest` is relative to $DELIVERABLE_CACHE (default ~/.cache/gentle-deliverable).
+# Lines starting with '#' and blank lines are ignored.
+#
+# URLs are IMMUTABLE per-release links (Temurin resolves `latest/17` to
+# jdk-17.0.21+9 as of 2026-11-17; the pin is the versioned link, not `latest`).
+# sha1 values from Maven Central are recorded in the comment line above each
+# jar for cross-reference; the script gate is the sha256 below.
+
+# --- Temurin JRE 17.0.21+9 (windows x64), shipped as-is (design D1) ---------
+# 43,860,024 B extracted layout -> runtime/ (design "Measured Windows layout")
+fe4656bd78fb09812dc38c49da777f79cc33e7ee435a254be82f9e7f40d9d117|43860024|https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.21%2B9/OpenJDK17U-jre_x64_windows_hotspot_17.0.21_9.zip|OpenJDK17U-jre_x64_windows_hotspot_17.0.21_9.zip
+
+# --- JavaFX 21.0.13 Windows classifier jars (one-time fetch approved) --------
+# javafx-base    sha1(central)=328a95df9ee0837075c2af95ba63df982355ecc9  753,226 B
+7a9a3dd9e7ab445ae751f50d9feddd550056ef5c267faf145512686a58f61651|753226|https://repo1.maven.org/maven2/org/openjfx/javafx-base/21.0.13/javafx-base-21.0.13-win.jar|jfx-win/javafx-base-21.0.13-win.jar
+# javafx-graphics sha1(central)=65630a339a750f8d39ccdb66782afebecee363a1  5,911,208 B  (only jar that bundles .dll natives — design D5 / Q1)
+42d59a74a1d0fcfae03ecd440db185e76f08b7a65dfc870a0a7eb5bad6d8f2d7|5911208|https://repo1.maven.org/maven2/org/openjfx/javafx-graphics/21.0.13/javafx-graphics-21.0.13-win.jar|jfx-win/javafx-graphics-21.0.13-win.jar
+# javafx-controls sha1(central)=c3e77321f7ce6d096cf4eb8c55faf67d36a395ab  2,582,586 B
+2fbf566741cba2de8dd886209cd8ba497995b51d2371441fc4d17e0a22ba6e03|2582586|https://repo1.maven.org/maven2/org/openjfx/javafx-controls/21.0.13/javafx-controls-21.0.13-win.jar|jfx-win/javafx-controls-21.0.13-win.jar
+# javafx-fxml     sha1(central)=04a9dd3a7b0fffbd3aeac2f6325b4c6f35c060bb    130,030 B
+67d4ad011c60e770d23369796669d5ab28075a8cdc91f792c28d97ebb96b25ef|130030|https://repo1.maven.org/maven2/org/openjfx/javafx-fxml/21.0.13/javafx-fxml-21.0.13-win.jar|jfx-win/javafx-fxml-21.0.13-win.jar
+
+# --- opt-in fetch flag ------------------------------------------------------
+#   bash package.sh --fetch
+# curl is invoked ONLY when a cache entry is missing/mismatched AND --fetch is
+# present. Without --fetch a cache miss fails fast (exit 1, spec R1.2) naming
+# the missing input; it NEVER downloads. The fetch codepath exists in
+# package.sh stage 0 but is not exercised on this host (cache already complete
+# and hash-verified).

@@ -1,0 +1,56 @@
+CHECKLIST-WINDOWS.txt - Atestacion de ejecucion en Windows
+==========================================================
+Tiempo estimado: 5 minutos.
+Completa este archivo en la PC con Windows donde probaste la aplicacion y
+devuelvelo a quien te lo paso (correo, Drive o USB). Con esto el estado
+"Windows" pasa de PENDIENTE (no verificado) a VERIFICADO.
+
+DATOS DE LA PRUEBA
+  Nombre / responsable : ____________________________
+  Fecha                : ____ / ____ / ______
+  Version de Windows   : (  ) Windows 10   (  ) Windows 11   ( ) otra: ______
+  Arquitectura         : (  ) 64 bits (x64)   (  ) 32 bits
+  Ruta donde lo abriste (incluye si tiene espacios): ________________________
+
+PASO 1 - Abrir la aplicacion
+  1. Descomprime TrabajoIntegrador.zip.
+  2. Entra en "TrabajoIntegrador-windows" y hace doble clic en "Iniciar.bat".
+  3. Observa si se abre la ventana principal (y la consola detras).
+  RESULTADO  (  ) PASS - se abrio la interfaz   (  ) FAIL - paso al reporte
+
+PASO 2 - Resolver un sistema conocido (carga por archivo)
+  1. En la interfaz elige el metodo "Gauss-Seidel" (o "Jacobi").
+  2. Usa el boton de "Cargar" / "Load" y selecciona el archivo
+     pruebas txt\prueba iterativo (converge).txt  (viene con el codigo; si no
+     lo tienes, escribe a mano la matriz y el vector de ese archivo).
+  3. Pulsa "Resolver".
+  RESULTADO ESPERADO: x = 1.0, y = 2.0, z = -1.0 (con tolerancia).
+  4. Mira el panel de TRAZA: debe mostrar las iteraciones (paso a paso).
+  5. Mira el panel de ESTADO: debe indicar que convergio / termino bien.
+  RESULTADO  (  ) PASS - valores y paneles correctos   (  ) FAIL
+
+PASO 3 - Resolver un sistema directo
+  1. Elige "Gauss" (o "Crout" / "Gauss-Jordan").
+  2. Carga o escribe: pruebas txt\prueba directo (Solu Uni, no sim).txt
+  RESULTADO ESPERADO: x = 17/15 ~= 1.1333, y = 12/5 = 2.4, z = 7/3 ~= 2.3333.
+  RESULTADO  (  ) PASS   (  ) FAIL
+
+PASO 4 - Cerrar
+  Cierra la ventana principal; la consola debe cerrarse sin errores sueltos.
+  RESULTADO  (  ) PASS   (  ) FAIL
+
+COMO REPORTAR
+  - Si todo es PASS: escribe "TODO PASS" abajo, pon tu nombre y fecha, y
+    envia este archivo.
+  - Si algo es FAIL: copia el mensaje que aparecio en la VENTANA DE CONSOLA
+    (la negra detras de la app) y pegalo en el area de OBSERVACIONES, junto
+    con el paso que fallo. Un pantallazo (tecla Impr. pantalla > pegar en
+    Paint > guardar .png) ayuda mucho.
+
+OBSERVACIONES / MENSAJES DE ERROR:
+______________________________________________________________________________
+______________________________________________________________________________
+______________________________________________________________________________
+
+Firma / nombre: ______________________  Fecha: ____/____/______
+Estado Windows: (  ) TODO PASS (VERIFICADO)   (  ) HAY FALLOS (ver arriba)
