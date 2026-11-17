@@ -45,8 +45,10 @@ public class EliminacionGaussiana extends Resolutor implements ResolutorDirecto 
         // 2. Eliminación Gaussiana
         for (int k = 0; k < n; k++) {
 
-            // Pivoteo simple
-            if (!pivoteo_simple(G, k)) {
+            // Pivoteo simple: si hay swap, usa indice actual y lo incrementa
+            indice = pivoteo_simple(G, k, indice);
+
+            if (indice < 0) {
                 throw new ArithmeticException(
                     "No existe un pivote válido en la columna " + k
                 );
@@ -98,11 +100,12 @@ public class EliminacionGaussiana extends Resolutor implements ResolutorDirecto 
         return x;
     }
 
-    // Pivoteo simple
-    private boolean pivoteo_simple(double[][] G, int k) {
+    // Pivoteo simple: retorna el indice actualizado (incrementado si hubo swap),
+    // o -1 si no existe pivote válido.
+    private int pivoteo_simple(double[][] G, int k, int indice) {
 
         if (Math.abs(G[k][k]) > 1e-12) {
-            return true;
+            return indice; // no hubo swap, indice sin cambio
         }
 
         for (int i = k + 1; i < n; i++) {
@@ -115,7 +118,7 @@ public class EliminacionGaussiana extends Resolutor implements ResolutorDirecto 
 
                 if (traza != null) {
                     traza.agregar(new Paso(
-                        -1,
+                        indice,
                         "Intercambio F" + (k + 1)
                         + " ↔ F" + (i + 1),
                         G,
@@ -124,11 +127,11 @@ public class EliminacionGaussiana extends Resolutor implements ResolutorDirecto 
                     ));
                 }
 
-                return true;
+                return indice + 1; // consumió el indice actual
             }
         }
 
-        return false;
+        return -1; // sin pivote válido
     }
 
     // Sustitución regresiva

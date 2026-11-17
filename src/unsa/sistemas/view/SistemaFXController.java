@@ -178,6 +178,9 @@ public class SistemaFXController {
             mostrarFormaMatricial();
 
             areaResultado.clear();
+            areaProcedimiento.clear();
+            paneProcedimiento.setExpanded(false);
+            paneProcedimiento.setDisable(true);
 
             labelEstado.setText(
                 "Sistema cargado correctamente: "
@@ -273,6 +276,9 @@ public class SistemaFXController {
         mostrarFormaMatricial();
 
         areaResultado.clear();
+        areaProcedimiento.clear();
+        paneProcedimiento.setExpanded(false);
+        paneProcedimiento.setDisable(true);
 
         labelEstado.setText(
             "Sistema ingresado correctamente: "
@@ -415,7 +421,7 @@ public class SistemaFXController {
                     }
 
                     // Mostrar el valor absoluto del coeficiente
-                    texto.append(formatear(Math.abs(coeficiente))).append("·x").append(matrizA[i].length - j);
+                    texto.append(formatear(Math.abs(coeficiente))).append("·x").append(j + 1);
                 }
                 texto.append(" = ").append(formatear(vectorB[i])).append("\n");
             }

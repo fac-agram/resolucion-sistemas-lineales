@@ -36,53 +36,45 @@ public class GaussJordan extends Resolutor implements ResolutorDirecto {
         // Registrar matriz inicial
         registrarPaso(indice++, "Matriz aumentada inicial", G);
 
-        // PRIMERA ETAPA: ceros debajo de los pivotes
+        // PRIMERA ETAPA: eliminar por columnas con normalización (diagonal unitaria)
         for (int k = 0; k < n; k++) {
 
-            if (!pivoteo_simple(G, k, indice)) {
+            // Pivoteo simple: si hay swap, registra el paso con indice y lo incrementa
+            indice = pivoteo_simple(G, k, indice);
+
+            if (indice < 0) {
                 throw new ArithmeticException(
-                    "No existe un pivote válido."
+                    "No existe un pivote válido en la columna " + k
                 );
             }
 
-            double pivote = G[k][k];
-
-            for (int i = k + 1; i < n; i++) {
-
-                double m = G[i][k] / pivote;
-
-                G[i][k] = 0;
-
-                for (int j = k + 1; j <= n; j++) {
-                    G[i][j] = G[i][j] - m * G[k][j];
-                }
-
-                registrarPaso(
-                    indice++,
-                    "F" + (i + 1) + " ← F" + (i + 1)
-                    + " - (" + m + ") F" + (k + 1),
-                    G
-                );
-            }
-        }
-
-        // SEGUNDA ETAPA: ceros encima de los pivotes
-        for (int k = n - 1; k >= 0; k--) {
-
+            // Normalizar la fila pivote (diagonal unitaria)
             double pivote = G[k][k];
 
             if (Math.abs(pivote) <= EPS) {
-                throw new ArithmeticException("Pivote nulo.");
+                throw new ArithmeticException("Pivote nulo en fila " + k);
             }
 
-            for (int i = k - 1; i >= 0; i--) {
+            for (int j = k; j <= n; j++) {
+                G[k][j] /= pivote;
+            }
 
-                double m = G[i][k] / pivote;
+            registrarPaso(indice++, "F" + (k + 1) + " ← F" + (k + 1)
+                + " / " + pivote, G);
+
+            // Eliminar la columna k en todas las filas (i ≠ k)
+            for (int i = 0; i < n; i++) {
+
+                if (i == k) continue;
+
+                double m = G[i][k];
+
+                if (Math.abs(m) <= EPS) continue;
 
                 G[i][k] = 0;
 
                 for (int j = k + 1; j <= n; j++) {
-                    G[i][j] = G[i][j] - m * G[k][j];
+                    G[i][j] -= m * G[k][j];
                 }
 
                 registrarPaso(
@@ -94,18 +86,11 @@ public class GaussJordan extends Resolutor implements ResolutorDirecto {
             }
         }
 
-        // OBTENER LAS SOLUCIONES
+        // OBTENER LAS SOLUCIONES (diagonal ya es 1)
         double[] x = new double[n];
 
         for (int i = 0; i < n; i++) {
-
-            if (Math.abs(G[i][i]) <= EPS) {
-                throw new ArithmeticException(
-                    "No se puede obtener la solución."
-                );
-            }
-
-            x[i] = G[i][n] / G[i][i];
+            x[i] = G[i][n];
         }
 
         // Registrar solución final
@@ -123,11 +108,11 @@ public class GaussJordan extends Resolutor implements ResolutorDirecto {
     }
 
     // MÉTODO DE PIVOTEO SIMPLE
-    private boolean pivoteo_simple(
+    private int pivoteo_simple(
             double[][] G, int k, int indice) {
 
         if (Math.abs(G[k][k]) > EPS) {
-            return true;
+            return indice;
         }
 
         for (int i = k + 1; i < n; i++) {
@@ -146,11 +131,11 @@ public class GaussJordan extends Resolutor implements ResolutorDirecto {
                     G
                 );
 
-                return true;
+                return indice + 1;
             }
         }
 
-        return false;
+        return -1;
     }
 
     // MÉTODO PARA REGISTRAR LOS PASOS
