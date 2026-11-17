@@ -12,7 +12,7 @@ context: |
   Layout: non-standard; pom sourceDirectory=src, testSourceDirectory=test, mainClass=unsa.sistemas.view.MainApp.
   Build: `sh ./mvnw -o clean compile` (pom pins maven.compiler.release=17).
   Testing: JUnit 5 (junit-jupiter 5.11.4) under test/, executed by maven-surefire-plugin 3.5.4.
-  Verify: `sh ./mvnw -o clean test`; expect Tests run: 59 (confirm after apply), Failures: 0, Errors: 0.
+  Verify: `sh ./mvnw -o clean test`; expect Tests run: 63, Failures: 0, Errors: 0.
   Style: existing identifiers use Spanish domain vocabulary; new code follows existing patterns.
 
 testing:
@@ -23,7 +23,7 @@ testing:
     and state-to-text mapper existed.
   detected_date: 2026-11-16
   runner:
-    # expected: 59 tests across 11 classes (confirm after apply) (target/surefire-reports/TEST-*.xml)
+    # expected: 63 tests across 12 classes (target/surefire-reports/TEST-*.xml)
     command: "sh ./mvnw -o clean test"
     framework: junit5
   layers:

@@ -81,6 +81,20 @@ public class SistemaControllerTest {
 
     /** Método inexistente: sin éxito y mensaje con "no reconocido". */
     @Test
+    void verificaMejoramientoIterativo() {
+        SistemaController c = new SistemaController();
+        Resultado r = c.resolver(A_CANONICA, B_CANONICA, SistemaController.MEJORAMIENTO);
+
+        assertTrue(r.isExitoso(), "mejoramiento es exitoso");
+        assertEquals(SistemaController.Estado.OK, r.getEstado(), "mejoramiento estado OK");
+        assertNotNull(r.getSolucion(), "mejoramiento solucion no nula");
+        assertArrayEquals(new double[]{0.8, 1.4}, r.getSolucion(), 1e-6, "mejoramiento solucion exacta");
+        assertNotNull(r.getConvergencia(), "mejoramiento convergencia no nula");
+        assertTrue(r.getConvergencia().convergio(), "mejoramiento convergio");
+    }
+
+    /** Método inexistente: sin éxito y mensaje con "no reconocido". */
+    @Test
     void verificaMetodoDesconocido() {
         SistemaController c = new SistemaController();
         Resultado r = c.resolver(A_CANONICA, B_CANONICA, "METODO_FANTASMA");
