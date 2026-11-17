@@ -88,3 +88,18 @@
     -fx-font-size: 12px;
     -fx-text-fill: #64748B;
 }
+
+.estado-ok {
+    -fx-text-fill: #15803D;
+    -fx-font-weight: bold;
+}
+
+.estado-advertencia {
+    -fx-text-fill: #B45309;
+    -fx-font-weight: bold;
+}
+
+.estado-error {
+    -fx-text-fill: #B91C1C;
+    -fx-font-weight: bold;
+}

@@ -12,18 +12,18 @@ context: |
   Layout: non-standard; pom sourceDirectory=src, testSourceDirectory=test, mainClass=unsa.sistemas.view.MainApp.
   Build: `sh ./mvnw -o clean compile` (pom pins maven.compiler.release=17).
   Testing: JUnit 5 (junit-jupiter 5.11.4) under test/, executed by maven-surefire-plugin 3.5.4.
-  Verify: `sh ./mvnw -o clean test`; expect Tests run: 52, Failures: 0, Errors: 0.
+  Verify: `sh ./mvnw -o clean test`; expect Tests run: 59 (confirm after apply), Failures: 0, Errors: 0.
   Style: existing identifiers use Spanish domain vocabulary; new code follows existing patterns.
 
 testing:
-  strict_tdd: false
+  strict_tdd: true
   reason: >-
-    Mechanical conversion of pre-existing main()-based harnesses into JUnit 5
-    tests. Expected values, tolerances and exception types already existed; no
-    new production behavior is being written.
+    honest-results adds a new outcome contract (Estado/Resultado): RED-first
+    tests were written and observed failing before the classification, messages
+    and state-to-text mapper existed.
   detected_date: 2026-11-16
   runner:
-    # expected: 52 tests across 11 classes (target/surefire-reports/TEST-*.xml)
+    # expected: 59 tests across 11 classes (confirm after apply) (target/surefire-reports/TEST-*.xml)
     command: "sh ./mvnw -o clean test"
     framework: junit5
   layers:
@@ -41,12 +41,7 @@ testing:
     # Legacy javac flow is superseded by Maven (release=17 pinned in pom.xml).
     maven_command: "sh ./mvnw -o clean compile"
   enable_strict_tdd_requires:
-    # All infrastructure prerequisites were satisfied by the
-    # establish-build-test-baseline change (JUnit 5 dependency, surefire 3.5.4,
-    # release 17, 52 JUnit tests, no stale .class under src/).
-    # strict_tdd stays false because that change was a mechanical conversion of
-    # pre-existing harnesses, not new production behavior. A future change that
-    # adds behavior may adopt strict TDD without further setup.
+    # Enabled by honest-results: first change to add production behavior; JUnit 5 + surefire prerequisites met by establish-build-test-baseline.
 
 rules:
   proposal:
@@ -66,7 +61,7 @@ rules:
   apply:
     - Follow existing package and naming patterns under src/unsa/sistemas.
     - Run `sh ./mvnw -o clean test`; surefire discovers `*Test.java` and fails the build on assertion failure.
-    - tdd: false
+    - tdd: true
     - test_command: "sh ./mvnw -o clean test"
     - verify_command: "sh ./mvnw -o clean test"
   verify:

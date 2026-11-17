@@ -548,91 +548,66 @@ public class SistemaFXController {
     return copia;
 }
     private void mostrarResultado(SistemaController.Resultado resultado) {
-
-    // Ocultar y limpiar el procedimiento anterior.
+        // Ocultar y limpiar el procedimiento anterior.
         areaProcedimiento.clear();
         paneProcedimiento.setExpanded(false);
         paneProcedimiento.setDisable(true);
 
-    StringBuilder texto = new StringBuilder();
+        SistemaController.Estado estado = resultado.getEstado();
+        SistemaController.TextoEstado textos = SistemaController.textoDe(estado);
+        StringBuilder texto = new StringBuilder(textos.titulo()).append("\n\n");
 
-    // Si ocurrió un error.
-    if (!resultado.isExitoso()) {
-
-        texto.append("NO SE PUDO RESOLVER EL SISTEMA\n\n");
-        texto.append(resultado.getMensaje());
+        switch (estado) {
+            case OK, NO_CONVERGIO -> agregarSolucion(texto, resultado);
+            case NO_FINITO, ERROR  -> texto.append(resultado.getMensaje());
+        }
 
         areaResultado.setText(texto.toString());
 
-        labelEstado.setText("Error durante la resolución.");
+        // Mostrar el procedimiento si existe una traza.
+        Traza traza = resultado.getTraza();
+        if (traza != null && !traza.estaVacia()) {
+            StringBuilder procedimiento = new StringBuilder();
+            mostrarTraza(traza, procedimiento);
+            areaProcedimiento.setText(procedimiento.toString());
+            paneProcedimiento.setDisable(false);
+            paneProcedimiento.setExpanded(false);
+        }
 
-        return;
+        labelEstado.setText(textos.barraEstado());
+        labelEstado.getStyleClass().removeAll("estado-ok", "estado-advertencia", "estado-error");
+        labelEstado.getStyleClass().add(textos.claseCss());
     }
 
-    // Mostrar la solución.
-    texto.append("SOLUCIÓN DEL SISTEMA\n\n");
+    private void agregarSolucion(StringBuilder texto, SistemaController.Resultado resultado) {
+        double[] solucion = resultado.getSolucion();
+        if (solucion != null) {
+            for (int i = 0; i < solucion.length; i++) {
+                texto.append("x")
+                     .append(i + 1)
+                     .append(" = ")
+                     .append(formatear(solucion[i]))
+                     .append("\n");
+            }
+        }
 
-    double[] solucion = resultado.getSolucion();
+        texto.append("\nMétodo utilizado: ")
+             .append(resultado.getMetodoUsado());
 
-    for (int i = 0; i < solucion.length; i++) {
+        texto.append("\n\n")
+             .append(resultado.getMensaje());
 
-        texto.append("x")
-             .append(i + 1)
-             .append(" = ")
-             .append(formatear(solucion[i]))
-             .append("\n");
+        SistemaController.Convergencia convergencia = resultado.getConvergencia();
+        if (convergencia != null) {
+            texto.append("\n\nINFORMACIÓN DE CONVERGENCIA");
+            texto.append("\nIteraciones: ")
+                 .append(convergencia.iteraciones());
+            texto.append("\nError final: ")
+                 .append(formatear(convergencia.errorFinal()));
+            texto.append("\nConvergió: ")
+                 .append(convergencia.convergio() ? "Sí" : "No");
+        }
     }
-
-    // Mostrar información del método.
-    texto.append("\nMétodo utilizado: ")
-         .append(resultado.getMetodoUsado());
-
-    texto.append("\n\n")
-         .append(resultado.getMensaje());
-
-    // Mostrar información adicional si es iterativo.
-    SistemaController.Convergencia convergencia =
-        resultado.getConvergencia();
-
-    if (convergencia != null) {
-
-        texto.append("\n\nINFORMACIÓN DE CONVERGENCIA");
-
-        texto.append("\nIteraciones: ")
-             .append(convergencia.iteraciones());
-
-        texto.append("\nError final: ")
-             .append(formatear(convergencia.errorFinal()));
-
-        texto.append("\nConvergió: ")
-             .append(convergencia.convergio() ? "Sí" : "No");
-    }
-
-    // Mostrar los resultados principales.
-    areaResultado.setText(texto.toString());
-
-    // Construir el procedimiento por separado.
-    StringBuilder procedimiento = new StringBuilder();
-
-    mostrarTraza(resultado.getTraza(), procedimiento);
-
-    // Mostrar el procedimiento solamente si existe una traza.
-    Traza traza = resultado.getTraza();
-
-    if (traza != null && !traza.estaVacia()) {
-
-        areaProcedimiento.setText(procedimiento.toString());
-
-        paneProcedimiento.setDisable(false);
-        paneProcedimiento.setExpanded(false);
-    }
-
-    labelEstado.setText(
-        resultado.isAdvertencia()
-            ? "Sistema resuelto con advertencias."
-            : "Sistema resuelto correctamente."
-    );
-}
     
     private void mostrarTraza(Traza traza, StringBuilder texto) {
 
