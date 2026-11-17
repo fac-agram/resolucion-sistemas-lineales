@@ -17,10 +17,6 @@ public class SistemaControllerTest {
     private static final double[][] A_CANONICA = {{2, 1}, {1, 3}};
     private static final double[] B_CANONICA = {3, 5};
 
-    /** Mensaje exacto de advertencia del controlador (no debe cambiar). */
-    private static final String ADVERTENCIA_JACOBI =
-            "La matriz no es estrictamente diagonal dominante. Jacobi podría no converger.";
-
     /**
      * JACOBI: éxito, solución EXACTA del sistema (calculada a mano con
      * Cramer, sin usar el propio resolutor — evita la tautología de
@@ -104,30 +100,142 @@ public class SistemaControllerTest {
     }
 
     /**
-     * JACOBI sin dominancia diagonal: la matriz se eligió porque NO es
-     * estrictamente diagonal dominante (fila 0: |1| &lt;= |2|), de modo que
-     * el controlador emite la advertencia. Con esta matriz Jacobi
-     * DIVERGE (el radio espectral de la matriz de iteración es &gt; 1):
-     * exactamente por eso existe la advertencia — la dominancia es solo
-     * condición <i>suficiente</i> de convergencia. No se verifican
-     * valores de solución, solo que el método no convergió.
+     * JACOBI sin dominancia diagonal y diverge: la matriz {{1,2},{3,4}}
+     * tiene radio espectral sqrt(1.5) &gt; 1, así que al llegar al tope de
+     * 1000 iteraciones la aproximación es finita (~1e88) pero NO es una
+     * solución del sistema. La aproximación se conserva y se etiqueta como
+     * tal; el resultado nunca debe declararse exitoso.
      */
     @Test
     void verificaJacobiSinDominanciaDiagonal() {
         double[][] A = {{1, 2}, {3, 4}};
-        double[] b = {3, 7}; // Jacobi diverge: matriz no diagonalmente dominante
+        double[] b = {3, 7};
 
         SistemaController c = new SistemaController();
         Resultado r = c.resolver(A, b, SistemaController.JACOBI);
 
-        assertTrue(r.isExitoso(), "sin dominancia exito");
+        assertFalse(r.isExitoso(), "sin dominancia no debe ser exitoso");
         assertTrue(r.isAdvertencia(), "sin dominancia es advertencia");
-        assertTrue(ADVERTENCIA_JACOBI.equals(r.getMensaje()), "sin dominancia mensaje exacto");
-        assertTrue(r.getTraza() != null, "sin dominancia traza no nula");
-        assertTrue(r.getConvergencia() != null, "sin dominancia convergencia no nula");
-        if (r.getConvergencia() != null) {
-            assertTrue(!r.getConvergencia().convergio(), "sin dominancia jacobi divergio");
+        assertEquals(SistemaController.Estado.NO_CONVERGIO, r.getEstado(),
+                "sin dominancia estado NO_CONVERGIO");
+
+        assertNotNull(r.getSolucion(), "sin dominancia solucion no nula");
+        for (double v : r.getSolucion()) {
+            assertTrue(Double.isFinite(v), "sin dominancia solucion finita");
         }
+
+        assertNotNull(r.getConvergencia(), "sin dominancia convergencia no nula");
+        assertFalse(r.getConvergencia().convergio(), "sin dominancia no convergio");
+
+        assertTrue(r.getMensaje().contains("no es una solución del sistema"),
+                "sin dominancia mensaje etiqueta la aproximacion");
+        assertFalse(r.getMensaje().contains("Resuelto con éxito."),
+                "sin dominancia mensaje no afirma exito");
+        assertNotNull(r.getTraza(), "sin dominancia traza no nula");
+    }
+
+    /**
+     * JACOBI converge parcialmente pero agota el tope de iteraciones con
+     * una aproximación finita (radio espectral 0.999): el resultado tampoco
+     * es una solución del sistema.
+     */
+    @Test
+    void verificaJacobiNoConvergeConAproximacionFinita() {
+        double[][] A = {{1, 0.999}, {0.999, 1}};
+        double[] b = {1, 2};
+
+        SistemaController c = new SistemaController();
+        Resultado r = c.resolver(A, b, SistemaController.JACOBI);
+
+        assertFalse(r.isExitoso(), "no convergido no debe ser exitoso");
+        assertEquals(SistemaController.Estado.NO_CONVERGIO, r.getEstado(),
+                "no convergido estado NO_CONVERGIO");
+
+        assertNotNull(r.getSolucion(), "no convergido solucion no nula");
+        for (double v : r.getSolucion()) {
+            assertTrue(Double.isFinite(v), "no convergido solucion finita");
+        }
+
+        assertNotNull(r.getConvergencia(), "no convergido convergencia no nula");
+        assertTrue(r.getConvergencia().iteraciones() > 0, "no convergido iteraciones > 0");
+        assertFalse(r.getConvergencia().convergio(), "no convergido no convergio");
+    }
+
+    /**
+     * JACOBI desborda a -Infinity antes del tope: exponer esos valores como
+     * solución sería deshonesto, así que no debe haber solución.
+     */
+    @Test
+    void verificaJacobiValoresNoFinitos() {
+        double[][] A = {{1, 3}, {2, 1}};
+        double[] b = {4, 3};
+
+        SistemaController c = new SistemaController();
+        Resultado r = c.resolver(A, b, SistemaController.JACOBI);
+
+        assertFalse(r.isExitoso(), "no finitos no debe ser exitoso");
+        assertEquals(SistemaController.Estado.NO_FINITO, r.getEstado(),
+                "no finitos estado NO_FINITO");
+        assertNull(r.getSolucion(), "no finitos no expone solucion");
+        assertTrue(r.getMensaje().contains("no finitos"),
+                "no finitos mensaje nombra la condicion");
+    }
+
+    /**
+     * SOR sobre la misma matriz produce NaN: tampoco expone solución.
+     */
+    @Test
+    void verificaSORValoresNoFinitos() {
+        double[][] A = {{1, 3}, {2, 1}};
+        double[] b = {4, 3};
+
+        SistemaController c = new SistemaController();
+        Resultado r = c.resolver(A, b, SistemaController.SOR_METODO);
+
+        assertFalse(r.isExitoso(), "SOR no finito no debe ser exitoso");
+        assertEquals(SistemaController.Estado.NO_FINITO, r.getEstado(),
+                "SOR no finito estado NO_FINITO");
+        assertNull(r.getSolucion(), "SOR no finito no expone solucion");
+    }
+
+    /**
+     * Método directo con término independiente NaN: el solucionador devuelve
+     * [NaN, NaN] y el controlador debe rechazarlo sin solución ni convergencia.
+     */
+    @Test
+    void verificaMetodoDirectoNoFinito() {
+        double[][] A = {{1, 2}, {3, 5}};
+        double[] b = {1, Double.NaN};
+
+        SistemaController c = new SistemaController();
+        Resultado r = c.resolver(A, b, SistemaController.GAUSS);
+
+        assertFalse(r.isExitoso(), "directo no finito no debe ser exitoso");
+        assertEquals(SistemaController.Estado.NO_FINITO, r.getEstado(),
+                "directo no finito estado NO_FINITO");
+        assertNull(r.getSolucion(), "directo no finito no expone solucion");
+        assertNull(r.getConvergencia(), "directo no finito sin convergencia");
+    }
+
+    /**
+     * JACOBI sobre una matriz no dominante que SÍ converge: el resultado es
+     * una solución legítima (no una advertencia) y el aviso de dominancia se
+     * agrega como nota al mensaje de éxito.
+     */
+    @Test
+    void verificaJacobiConvergeConNotaSinDominancia() {
+        double[][] A = {{1, 1}, {1, 2}};
+        double[] b = {2, 3};
+
+        SistemaController c = new SistemaController();
+        Resultado r = c.resolver(A, b, SistemaController.JACOBI);
+
+        assertTrue(r.isExitoso(), "OK con nota es exitoso");
+        assertEquals(SistemaController.Estado.OK, r.getEstado(), "OK con nota estado OK");
+        assertFalse(r.isAdvertencia(), "OK con nota no es advertencia");
+        assertEquals("Resuelto con éxito. Nota: la matriz no es estrictamente diagonal dominante.",
+                r.getMensaje(), "OK con nota mensaje exacto");
+        assertArrayEquals(new double[]{1, 1}, r.getSolucion(), 1e-6, "OK con nota solucion");
     }
 
     /**
@@ -329,5 +437,79 @@ public class SistemaControllerTest {
     assertTrue(r.getConvergencia() == null, "cholesky no definida positiva sin convergencia");
 }
 
+
+
+    /**
+     * Un resultado por estado: cada estado expone un mensaje propio y solo el
+     * estado OK usa el texto de éxito. ERROR y NO_FINITO nunca exponen solución.
+     */
+    @Test
+    void verificaMensajesPorEstado() {
+        SistemaController c = new SistemaController();
+
+        Resultado ok = c.resolver(A_CANONICA, B_CANONICA, SistemaController.JACOBI);
+        Resultado noConvergio = c.resolver(new double[][]{{1, 2}, {3, 4}}, new double[]{3, 7},
+                SistemaController.JACOBI);
+        Resultado noFinito = c.resolver(new double[][]{{1, 2}, {3, 5}}, new double[]{1, Double.NaN},
+                SistemaController.GAUSS);
+        Resultado error = c.resolver(A_CANONICA, B_CANONICA, "NOPE");
+
+        assertEquals(SistemaController.Estado.OK, ok.getEstado(), "canonica estado OK");
+        assertEquals(SistemaController.Estado.NO_CONVERGIO, noConvergio.getEstado(),
+                "sin dominancia estado NO_CONVERGIO");
+        assertEquals(SistemaController.Estado.NO_FINITO, noFinito.getEstado(),
+                "no finito estado NO_FINITO");
+        assertEquals(SistemaController.Estado.ERROR, error.getEstado(), "desconocido estado ERROR");
+
+        assertFalse(ok.getMensaje().isBlank(), "OK mensaje no vacio");
+        assertFalse(noConvergio.getMensaje().isBlank(), "NO_CONVERGIO mensaje no vacio");
+        assertFalse(noFinito.getMensaje().isBlank(), "NO_FINITO mensaje no vacio");
+        assertFalse(error.getMensaje().isBlank(), "ERROR mensaje no vacio");
+
+        assertTrue(ok.getMensaje().contains("Resuelto con éxito."), "solo OK usa el texto de exito");
+        assertFalse(noConvergio.getMensaje().contains("Resuelto con éxito."),
+                "NO_CONVERGIO no usa el texto de exito");
+        assertFalse(noFinito.getMensaje().contains("Resuelto con éxito."),
+                "NO_FINITO no usa el texto de exito");
+        assertFalse(error.getMensaje().contains("Resuelto con éxito."),
+                "ERROR no usa el texto de exito");
+
+        assertNull(noFinito.getSolucion(), "NO_FINITO sin solucion");
+        assertNull(error.getSolucion(), "ERROR sin solucion");
+    }
+
+    /**
+     * El mapeo estado → textos es puro y fija los encabezados, la barra de
+     * estado y la clase CSS de las tres representaciones.
+     */
+    @Test
+    void verificaTextosDeEstado() {
+        var ok = SistemaController.textoDe(SistemaController.Estado.OK);
+        assertEquals("SOLUCIÓN DEL SISTEMA", ok.titulo(), "OK titulo");
+        assertEquals("Sistema resuelto correctamente.", ok.barraEstado(), "OK barra de estado");
+        assertEquals("estado-ok", ok.claseCss(), "OK clase css");
+
+        var noConvergio = SistemaController.textoDe(SistemaController.Estado.NO_CONVERGIO);
+        assertEquals("ÚLTIMA APROXIMACIÓN (NO CONVERGIÓ)", noConvergio.titulo(),
+                "NO_CONVERGIO titulo");
+        assertEquals("El método no convergió. Se muestra la última aproximación.",
+                noConvergio.barraEstado(), "NO_CONVERGIO barra de estado");
+        assertEquals("estado-advertencia", noConvergio.claseCss(), "NO_CONVERGIO clase css");
+
+        var noFinito = SistemaController.textoDe(SistemaController.Estado.NO_FINITO);
+        assertEquals("NO SE PUDO RESOLVER EL SISTEMA", noFinito.titulo(), "NO_FINITO titulo");
+        assertEquals("Error: el resultado no es finito.", noFinito.barraEstado(),
+                "NO_FINITO barra de estado");
+        assertEquals("estado-error", noFinito.claseCss(), "NO_FINITO clase css");
+
+        var error = SistemaController.textoDe(SistemaController.Estado.ERROR);
+        assertEquals("NO SE PUDO RESOLVER EL SISTEMA", error.titulo(), "ERROR titulo");
+        assertEquals("Error durante la resolución.", error.barraEstado(), "ERROR barra de estado");
+        assertEquals("estado-error", error.claseCss(), "ERROR clase css");
+
+        assertNotEquals(ok.titulo(), noConvergio.titulo(), "advertencia y OK con encabezado distinto");
+        assertNotEquals(noConvergio.claseCss(), noFinito.claseCss(),
+                "advertencia y error con clase css distinta");
+    }
 
 }

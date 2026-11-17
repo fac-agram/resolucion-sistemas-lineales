@@ -118,27 +118,57 @@ public class SistemaController {
                 return Resultado.error("Método aún no implementado: " + metodo + ". El resolutor devolvió null.");
             }
 
-            if (r instanceof ResolutorIterativo iter) {
-                Convergencia convergencia = new Convergencia(
-                        iter.getIteraciones(), iter.getErrorFinal(), iter.convergio());
-                // La dominancia diagonal es condición SUFICIENTE (no
-                // necesaria) de convergencia: el método se ejecuta siempre
-                // y la falta de dominancia se comunica como advertencia.
-                if ((JACOBI.equals(metodo) || GAUSS_SEIDEL.equals(metodo))
-                        && !ValidadorMatriz.esDiagonalDominante(A)) {
-                    String advertencia = JACOBI.equals(metodo)
-                            ? "La matriz no es estrictamente diagonal dominante. Jacobi podría no converger."
-                            : "La matriz no es estrictamente diagonal dominante. Gauss-Seidel podría no converger.";
-                    return Resultado.exitoConAdvertencia(solucion, metodo, advertencia, traza, convergencia);
-                }
-                return Resultado.exitoIterativo(solucion, metodo, traza, convergencia);
-            }
-
-            return Resultado.exito(solucion, metodo, traza);
+            Convergencia convergencia = (r instanceof ResolutorIterativo iter)
+                    ? new Convergencia(iter.getIteraciones(), iter.getErrorFinal(), iter.convergio())
+                    : null;
+            String nota = convergencia != null
+                    && (JACOBI.equals(metodo) || GAUSS_SEIDEL.equals(metodo))
+                    && !ValidadorMatriz.esDiagonalDominante(A)
+                    ? Resultado.NOTA_SIN_DOMINANCIA : null;
+            return Resultado.clasificar(solucion, metodo, traza, convergencia, nota);
         } catch (Exception e) {
             String detalle = e.getMessage() != null ? e.getMessage() : e.toString();
             return Resultado.error("Error durante la ejecución de " + metodo + ": " + detalle);
         }
+    }
+
+    /**
+     * Estados posibles de la resolución de un sistema lineal.
+     */
+    public enum Estado {
+        OK,
+        NO_CONVERGIO,
+        NO_FINITO,
+        ERROR
+    }
+
+    /**
+     * Porta los textos asociados a la representación de un estado en la interfaz.
+     */
+    public record TextoEstado(String titulo, String barraEstado, String claseCss) {}
+
+    /**
+     * Mapea un estado a sus textos correspondientes para la interfaz de usuario.
+     */
+    public static TextoEstado textoDe(Estado estado) {
+        return switch (estado) {
+            case OK -> new TextoEstado(
+                    "SOLUCIÓN DEL SISTEMA",
+                    "Sistema resuelto correctamente.",
+                    "estado-ok");
+            case NO_CONVERGIO -> new TextoEstado(
+                    "ÚLTIMA APROXIMACIÓN (NO CONVERGIÓ)",
+                    "El método no convergió. Se muestra la última aproximación.",
+                    "estado-advertencia");
+            case NO_FINITO -> new TextoEstado(
+                    "NO SE PUDO RESOLVER EL SISTEMA",
+                    "Error: el resultado no es finito.",
+                    "estado-error");
+            case ERROR -> new TextoEstado(
+                    "NO SE PUDO RESOLVER EL SISTEMA",
+                    "Error durante la resolución.",
+                    "estado-error");
+        };
     }
 
     /**
@@ -170,18 +200,20 @@ public class SistemaController {
      */
     public static class Resultado {
 
-        private final boolean exitoso;
-        private final boolean esAdvertencia;
+        public static final String MENSAJE_EXITO = "Resuelto con éxito.";
+        public static final String NOTA_SIN_DOMINANCIA = "Nota: la matriz no es estrictamente diagonal dominante.";
+        public static final String MENSAJE_NO_FINITO = "El método produjo valores no finitos (Infinity o NaN). No hay solución que mostrar.";
+
+        private final Estado estado;
         private final double[] solucion;
         private final String mensaje;
         private final String metodoUsado;
         private final Traza traza;
         private final Convergencia convergencia;
 
-        private Resultado(boolean exitoso, boolean esAdvertencia, double[] solucion, String mensaje,
+        private Resultado(Estado estado, double[] solucion, String mensaje,
                           String metodoUsado, Traza traza, Convergencia convergencia) {
-            this.exitoso      = exitoso;
-            this.esAdvertencia = esAdvertencia;
+            this.estado       = estado;
             this.solucion     = solucion;
             this.mensaje      = mensaje;
             this.metodoUsado  = metodoUsado;
@@ -189,57 +221,40 @@ public class SistemaController {
             this.convergencia = convergencia;
         }
 
-        /**
-         * Éxito sin observaciones con traza (métodos directos):
-         * {@link #getConvergencia()} es {@code null}.
-         *
-         * @param solucion solución obtenida por el método
-         * @param metodo   identificador del método ejecutado
-         * @param traza    traza registrada por el resolutor
-         */
-        public static Resultado exito(double[] solucion, String metodo, Traza traza) {
-            return new Resultado(true, false, solucion, "Resuelto con éxito.", metodo, traza, null);
+        private static Resultado clasificar(double[] solucion, String metodo, Traza traza,
+                                            Convergencia convergencia, String nota) {
+            if (contieneNoFinitos(solucion)) {
+                return new Resultado(Estado.NO_FINITO, null, MENSAJE_NO_FINITO, metodo, traza, convergencia);
+            }
+            if (convergencia != null && !convergencia.convergio()) {
+                String mensaje = "El método no convergió en el máximo de iteraciones ("
+                        + convergencia.iteraciones()
+                        + "). Se muestra la última aproximación; no es una solución del sistema.";
+                return new Resultado(Estado.NO_CONVERGIO, solucion, mensaje, metodo, traza, convergencia);
+            }
+            String mensaje = nota == null ? MENSAJE_EXITO : MENSAJE_EXITO + " " + nota;
+            return new Resultado(Estado.OK, solucion, mensaje, metodo, traza, convergencia);
         }
 
-        /**
-         * Éxito sin observaciones de un método iterativo: incluye la traza
-         * y el registro de convergencia.
-         *
-         * @param solucion    solución obtenida (última aproximación)
-         * @param metodo      identificador del método ejecutado
-         * @param traza       traza registrada por el resolutor
-         * @param convergencia iteraciones, error final y resultado de la
-         *                     comprobación de convergencia
-         */
-        public static Resultado exitoIterativo(double[] solucion, String metodo, Traza traza,
-                                               Convergencia convergencia) {
-            return new Resultado(true, false, solucion, "Resuelto con éxito.", metodo, traza, convergencia);
-        }
-
-        /**
-         * Éxito con advertencia, traza y convergencia (Jacobi y
-         * Gauss-Seidel sin dominancia diagonal).
-         *
-         * @param solucion    solución obtenida por el método
-         * @param metodo      identificador del método ejecutado
-         * @param advertencia texto de la advertencia para la vista
-         * @param traza       traza registrada por el resolutor
-         * @param convergencia datos de convergencia del método iterativo
-         */
-        public static Resultado exitoConAdvertencia(double[] solucion, String metodo, String advertencia,
-                                                    Traza traza, Convergencia convergencia) {
-            return new Resultado(true, true, solucion, advertencia, metodo, traza, convergencia);
+        private static boolean contieneNoFinitos(double[] solucion) {
+            for (double v : solucion) {
+                if (!Double.isFinite(v)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /**
          * Fallo: no se obtuvo solución. {@link #getSolucion()} es {@code null}.
          */
         public static Resultado error(String mensaje) {
-            return new Resultado(false, false, null, mensaje, null, null, null);
+            return new Resultado(Estado.ERROR, null, mensaje, null, null, null);
         }
 
-        public boolean isExitoso()      { return exitoso; }
-        public boolean isAdvertencia()  { return esAdvertencia; }
+        public Estado getEstado()       { return estado; }
+        public boolean isExitoso()      { return estado == Estado.OK; }
+        public boolean isAdvertencia()  { return estado == Estado.NO_CONVERGIO; }
         public double[] getSolucion()   { return solucion; }
         public String getMensaje()      { return mensaje; }
         public String getMetodoUsado()  { return metodoUsado; }
