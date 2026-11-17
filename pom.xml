@@ -12,8 +12,9 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>17</maven.compiler.release>
         <javafx.version>21.0.13</javafx.version>
+        <junit.version>5.11.4</junit.version>
     </properties>
 
     <dependencies>
@@ -30,6 +31,14 @@
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+
+        <!-- Pruebas con JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -43,6 +52,7 @@
                 <directory>src</directory>
                 <excludes>
                     <exclude>**/*.java</exclude>
+                    <exclude>**/*.class</exclude>
                 </excludes>
             </resource>
         </resources>
@@ -53,6 +63,13 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.1</version>
+            </plugin>
+
+            <!-- Ejecución de pruebas con JUnit Platform -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
             </plugin>
 
             <!-- Ejecución de aplicaciones JavaFX -->
