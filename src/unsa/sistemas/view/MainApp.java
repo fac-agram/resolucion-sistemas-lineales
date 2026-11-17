@@ -13,7 +13,7 @@ public class MainApp extends Application {
 
         // Cargar la interfaz diseñada en Scene Builder
         FXMLLoader loader = new FXMLLoader(
-            getClass().getResource("sistema.fxml")
+            getClass().getResource("Sistema.fxml")
         );
 
         Parent raiz = loader.load();
