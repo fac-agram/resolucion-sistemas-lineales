@@ -65,6 +65,16 @@
                 <version>3.14.1</version>
             </plugin>
 
+            <!-- Jar ejecutable: fija Main-Class en el manifiesto -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
+                <configuration><archive><manifest>
+                    <mainClass>unsa.sistemas.view.Launcher</mainClass>
+                </manifest></archive></configuration>
+            </plugin>
+
             <!-- Ejecución de pruebas con JUnit Platform -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
