@@ -25,6 +25,22 @@ Descarga/descomprime `TrabajoIntegrador.zip` (se genera con `bash package.sh`; v
 - **Linux** — entra en `TrabajoIntegrador-linux/` y haz doble clic en `bin/TrabajoIntegrador`.
 - **Windows** — entra en `TrabajoIntegrador-windows/` y haz doble clic en `Iniciar.bat`. (En Windows se abre además una ventana de consola junto a la app: es normal y muestra mensajes por si algo falla; cárgala con `LEEME.txt`.)
 
+### La app no abre en Windows: "Una directiva de Control de aplicaciones bloqueó este archivo"
+
+Si al ejecutar aparece un error en consola que menciona `prism_d3d.dll`, `prism_sw.dll`, `no suitable pipeline found` o `No toolkit found`, **no es un defecto del programa ni del ZIP**: es Windows bloqueando las librerías nativas de JavaFX (sin firma digital) que se extraen en tu perfil. Se soluciona en la propia PC, en este orden:
+
+1. **Desbloquear la descarga antes de extraer** (el bloqueo "Mark of the Web" afecta a todo lo descargado de internet): clic derecho sobre `TrabajoIntegrador.zip` → *Propiedades* → tildar **Desbloquear** → Aceptar → y volver a extraer. O en PowerShell:
+   ```powershell
+   Unblock-File .\TrabajoIntegrador.zip
+   ```
+2. **Excluir las carpetas en Seguridad de Windows** (necesita permisos de administrador):
+   *Seguridad de Windows → Protección contra virus y amenazas → Administrar la seguridad → Configuraciones de exclusión → Agregar o quitar exclusiones* y agregar:
+   - la carpeta extraída `TrabajoIntegrador-windows\`
+   - `C:\Users\<tu usuario>\.openjfx\`
+3. Si la PC es de un **dominio corporativo/universitario** con directivas (WDAC/AppLocker) que bloquean DLLs sin firma: ninguna solución local vale, hace falta el administrador de TI o usar una PC personal.
+
+Opción definitiva (de pago, para productos): **firmar el ejecutable** con un certificado de código. Los artefactos de este proyecto, académicos, van sin firmar — por eso la documentación del bloqueo es parte de la entrega.
+
 Tamaño del artefacto: el ZIP mide **~86 MB**, por encima del límite de 25 MB del correo. Entrega por USB, Google Drive o la plataforma del campus, no por email.
 
 ### Cómo resolver un sistema dentro de la app

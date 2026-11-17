@@ -29,10 +29,34 @@ QUE VERAS EN PANTALLA
 - Paneles con el resultado, el traza del procedimiento y el estado.
 
 SI WINDOWS BLOQUEA LA ABRIR
-Al ser una aplicacion sin firma digital, Windows podria mostrar un aviso
-azul "SmartScreen". Es esperado en copias por USB o descargas. Pulsa en
-"Mas informacion" y luego en "Ejecutar de todos modos". Esto solo pasa la
-primera vez.
+Al ser una aplicacion sin firma digital, Windows puede bloquearla. Hay DOS
+formas del bloqueo:
+
+A) Aviso azul "SmartScreen" al hacer doble clic: pulsa "Mas informacion" y
+   luego "Ejecutar de todos modos". Solo pasa la primera vez.
+
+B) La consola muestra "Una directiva de Control de aplicaciones bloque6
+   este archivo" (y/o menciona prism_d3d.dll, prism_sw.dll, "no suitable
+   pipeline found"). Esto NO es un defecto del programa: es Windows
+   impidiendo que las librerias de JavaFX se carguen desde tu perfil de
+   usuario. Soluciones, en este orden:
+
+   1. Desbloquear el ZIP antes de extraer (afecta a todo lo descargado
+      de internet). Clic derecho sobre TrabajoIntegrador.zip >
+      Propiedades > marca "Desbloquear" > Aceptar, y VUELVE a extraer.
+      O en PowerShell:  Unblock-File .\TrabajoIntegrador.zip
+   2. Si persiste, con permisos de administrador:
+      Seguridad de Windows > Proteccion contra virus y amenazas >
+      Administrar la seguridad > Exclusiones > "Agregar o quitar
+      exclusiones" y agrega DOS carpetas:
+        - la carpeta TrabajoIntegrador-windows ya extraida
+        - C:\Users\<tu usuario>\.openjfx
+   3. Si la PC es de una red corporativa/universitaria con directivas
+      estrictas (WDAC/AppLocker): hace falta el administrador de TI o
+      usar otra PC. La app en si esta sana.
+
+La firma digital de pago eliminaría estos avisos; este proyecto academico
+se entrega sin firmar a proposito.
 
 SI ALGO NO FUNCIONA
 - Deja abierta la ventana de consola: ahi aparece el mensaje de error.
