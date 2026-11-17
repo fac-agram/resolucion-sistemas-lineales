@@ -8,12 +8,12 @@ Provenance
 - Synced: 2026-11-17
 - Origin verdict: pass_with_warnings (zero CRITICAL; commits c09f8ed + d83d63e; see archive-report.md in the archived change)
 - Requirements R1-R6 and their scenarios are preserved verbatim from the delta spec; ids unchanged.
-- R5 partial attestation (verify WARNING-1): Scenario R5.1 is COMPLIANT for the manual-load path
-  (verified live via a JavaFX harness driving the real FXML + controller) but only STATICALLY verified
-  for the file-load path (code block SistemaFXController.java:180-183 statically identical to the
-  live-verified :278-281 block; FileChooser is a native dialog, not headlessly automatable).
-  A ~30-second human click-through (solve A -> load file B -> panels empty, pane collapsed+disabled)
-  remains PENDING as attestation; accepted at archive as static-identical per the verify disposition.
+- R5 attestation (verify WARNING-1, CLOSED 2026-11-17): Scenario R5.1 is COMPLIANT for the manual-load path
+  (verified live via a JavaFX harness driving the real FXML + controller) AND for the file-load path
+  (attested live on 2026-11-17: the real app on DISPLAY=:1 was driven via X11 XTEST synthetic input
+  through the native GTK FileChooser — Ctrl+L path entry to a fixture, accept; post-load the result and
+  procedure panels were empty, the pane collapsed+disabled, status "Sistema cargado correctamente").
+  Evidence: /tmp/opencode/attest/ + the dated GUI-attestation addendum in the archived verify-report.md.
 - Carried notes: verify WARNING-2 (apply-reported transient flake, unreproduced in 3 fresh full runs —
   flake-watch continues; capture target/surefire-reports BEFORE any clean if it ever reddens);
   WARNING-3 (TDD evidence in prose/commit-body form, substance independently reproduced — no spec impact);
@@ -110,11 +110,13 @@ Loading a new system (file or manual) MUST clear previous result and procedure p
 - WHEN the user loads system B
 - THEN procedure and result panels are empty and disabled until the next solve
 
-> **Verification status (2026-11-17)**: PARTIAL. Manual-load path verified live through the real
-> handler chain (JavaFX harness on DISPLAY=:1, automated dialog). File-load path statically identical
-> (`SistemaFXController.java:180-183`) but the native FileChooser dialog is not headlessly automatable;
-> ~30s human click-through attestation pending — accepted at archive as static-identical (verify
-> WARNING-1). The normative requirement text above is unchanged.
+> **Verification status (updated 2026-11-17)**: ATTESTED. Manual-load path verified live through the real
+> handler chain (JavaFX harness on DISPLAY=:1, automated dialog). File-load path attested live the same day
+> (`SistemaFXController.java:180-183` executed in the real app): X11 XTEST automation clicked "Cargar
+> archivo .txt", drove the native GTK FileChooser (Ctrl+L → fixture path → accept), and post-load capture
+> showed both panels cleared, procedure pane collapsed+disabled, status "Sistema cargado correctamente".
+> Evidence: `/tmp/opencode/attest/` (screenshots + README), verify-report GUI-attestation addendum.
+> The normative requirement text above is unchanged.
 
 ### Requirement: R6 Trace deep-copy integrity
 

@@ -179,3 +179,14 @@ No tautologies, no ghost loops (index loops are preceded by hard `pasos.get(0/1/
 - `/tmp/opencode/verify-tlf/GuiProbe.java` + run transcript (real UI, DISPLAY=:1, 10/10 checks)
 - `/tmp/opencode/verify-tlf/run3.log` (82/0/0, BUILD SUCCESS, exit 0)
 - Repo state after verify: `git status` clean (only untracked `openspec/changes/*`), HEAD `d83d63e`
+
+## GUI attestation (2026-11-17): R5.1 file-load
+
+**Verdict: PASS — WARNING-1 resolved.** The PENDING file-load sub-path was closed by executing the real behavior end-to-end, not statically.
+
+**Method.** Real app launched from `target/classes` on the JavaFX 21.0.13 jlink runtime (`/tmp/opencode/rt`, `--add-modules javafx.controls,javafx.fxml`) under DISPLAY=:1; window confirmed via `xwininfo`. AT-SPI exposed the JavaFX frame with zero scene children and no key-generation API (and no xdotool existed), so the dialog was driven via X11 XTEST synthetic input (python-xlib `Xlib.ext.xtest` — the mechanism xdotool uses), with `import` screenshots as the assertion medium. Sequence: seeded/solved a system (its result `x1=1,x2=1,x3=1` + expanded Gauss trace captured pre-load in `attest-2a-preload-app.png`) → XTEST-clicked "Cargar archivo .txt" → the **native GTK FileChooser** opened → Ctrl+L → typed the absolute fixture path `/home/russian/app-trabajointegrador/resolucion-sistemas-lineales/pruebas txt/prueba directo (Solu Uni, no sim).txt` → Enter accepted.
+
+**Assertion (~0.7 s after accept, `attest-2d-postload-app-later.png` vs `attest-2a-preload-app.png`):** with a DIFFERENT system loaded from file (4·x1+1·x2+1·x3=6… → 2·x1+1·x2+1·x3=7…, confirmed rendered in `areaSistema`/`areaMatrizA`), `areaResultado` was empty (prompt restored — stale solution gone), `paneProcedimiento` collapsed (▶) AND disabled (greyed — stale trace gone), and `labelEstado` read exactly **"Sistema cargado correctamente: 3 incógnitas."** — i.e. the clear block `SistemaFXController.java:180-183` + status :185-188 executed live in the real handler chain. Combined with the already-verified manual sub-path (harness 10/10), **R5.1 is now fully COMPLIANT on both input paths**.
+
+**Honesty note.** The desktop was shared with a human during the session; the mid-run solve that established the populated pre-state was partly user-performed. The R5.1-relevant transition itself (file-load → cleared panels) was 100% automation-driven and captured back-to-back. Evidence inventory + reproduction steps: `/tmp/opencode/attest/README.md` (screenshots `attest-0-initial.png` … `attest-3c-current.png`, `xdrive.py`, `run-app.sh`, `tree-initial.txt`/`tree-final.txt` AT-SPI dumps, `app.log`). Live-spec verification-status note for R5.1 updated accordingly; full suite re-gated 82/0/0 after the attestation.
+

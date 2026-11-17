@@ -63,6 +63,8 @@ Verdict **pass_with_warnings**; 11/12 scenarios COMPLIANT, 1 PARTIAL, 0 failing.
 | procedure-trace R5.1 file-load | GUI click-through: solve A → load file B → result/procedure panels empty, pane collapsed+disabled | ~30s | user |
 | Flake watch | if any run reddens, save `target/surefire-reports` before `clean` | — | whoever runs the suite |
 
+- **CLOSED 2026-11-17**: R5.1 file-load row **attested PASS** — executed live via X11 XTEST automation on the real app (DISPLAY=:1) driving the native GTK FileChooser (fixture path via Ctrl+L); post-load state proves both panels cleared, pane collapsed+disabled, status "Sistema cargado correctamente: 3 incógnitas." See the dated "GUI attestation (2026-11-17)" addendum in this change's `verify-report.md`; evidence in `/tmp/opencode/attest/` (README + screenshots). The live `procedure-trace` spec's R5.1 verification-status note was updated PARTIAL → attested. Flake-watch row remains open.
+
 ## 7. Archive Contents (audit trail — never modify)
 
 - `proposal.md` ✅ — retroactive-formalization framing, joint-R5 ownership
