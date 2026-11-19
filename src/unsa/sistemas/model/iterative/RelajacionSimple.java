@@ -39,10 +39,10 @@ import unsa.sistemas.model.trace.Traza;
 public class RelajacionSimple extends Resolutor implements ResolutorIterativo {
 
     /** Tolerancia sobre la norma infinito del residuo. */
-    private static final double TOLERANCIA = 1e-7;
+    private final double tolerancia;
 
     /** Cota máxima de actualizaciones antes de detenerse sin converger. */
-    private static final int MAX_ITERACIONES = 1000;
+    private final int maxIteraciones;
 
     private int iteraciones;
     private double errorFinal;
@@ -54,17 +54,45 @@ public class RelajacionSimple extends Resolutor implements ResolutorIterativo {
      * @param n orden del sistema
      */
     public RelajacionSimple(double[][] A, double[] b, int n) {
-        super(A, b, n);
+        this(A, b, n, Parametros.defecto());
     }
 
     /**
-     * Constructor con trazado.
+     * Constructor con parámetros ajustables.
+     *
+     * @param parametros tolerancia (sobre {@code ‖r‖∞}) y cota de
+     *                   actualizaciones a usar (ω se ignora)
+     */
+    public RelajacionSimple(double[][] A, double[] b, int n, Parametros parametros) {
+        this(A, b, n, parametros, null);
+    }
+
+    /**
+     * Constructor con trazado (parámetros por defecto).
      *
      * @param traza traza a ir llenando paso a paso, o {@code null} para
      *              ejecutar sin trazado
      */
     public RelajacionSimple(double[][] A, double[] b, int n, Traza traza) {
+        this(A, b, n, Parametros.defecto(), traza);
+    }
+
+    /**
+     * Constructor completo: parámetros ajustables y trazado.
+     *
+     * <p><b>Trampa de aridad:</b> {@code new RelajacionSimple(A, b, n, null)}
+     * queda ambiguo entre {@link Traza} y {@link Parametros}; pase siempre
+     * el tipo explícito. No existe ningún uso así en el proyecto.</p>
+     *
+     * @param parametros tolerancia (sobre {@code ‖r‖∞}) y cota de
+     *                   actualizaciones a usar (ω se ignora)
+     * @param traza      traza a ir llenando paso a paso, o {@code null} para
+     *                   ejecutar sin trazado
+     */
+    public RelajacionSimple(double[][] A, double[] b, int n, Parametros parametros, Traza traza) {
         super(A, b, n, traza);
+        this.tolerancia = parametros.epsilon();
+        this.maxIteraciones = parametros.maxIteraciones();
     }
 
     @Override
@@ -89,7 +117,7 @@ public class RelajacionSimple extends Resolutor implements ResolutorIterativo {
         }
 
         // 2. Bucle: medir residuo → actualizar el componente máximo → repetir
-        for (int k = 1; k <= MAX_ITERACIONES; k++) {
+        for (int k = 1; k <= maxIteraciones; k++) {
 
             // 2a. Un solo barrido: norma infinito del residual Y su índice máximo
             int m = 0;
@@ -108,7 +136,7 @@ public class RelajacionSimple extends Resolutor implements ResolutorIterativo {
             iteraciones = k;
 
             // 2b. Criterio de paro: todo el residual bajo la tolerancia
-            if (norma < TOLERANCIA) {
+            if (norma < tolerancia) {
                 convergio = true;
                 break;
             }
@@ -137,7 +165,7 @@ public class RelajacionSimple extends Resolutor implements ResolutorIterativo {
             }
         }
 
-        // Si salió por agotar MAX_ITERACIONES, convergio queda en false
+        // Si salió por agotar el máximo de iteraciones, convergio queda en false
         // y se retorna la última aproximación obtenida.
         return x;
     }

@@ -33,17 +33,10 @@ import unsa.sistemas.model.trace.Traza;
 public class SOR extends Resolutor implements ResolutorIterativo {
 
     /** Tolerancia absoluta sobre la diferencia entre iteraciones sucesivas. */
-    private static final double TOLERANCIA = 1e-7;
+    private final double tolerancia;
 
     /** Cota máxima de iteraciones antes de detenerse sin converger. */
-    private static final int MAX_ITERACIONES = 1000;
-
-    /**
-     * Valor de ω usado cuando no se especifica otro. 1.5 es un punto de
-     * partida razonable para sistemas diagonalmente dominantes; pase su
-     * propio ω por el constructor para explorar otros valores.
-     */
-    private static final double OMEGA_DEFECTO = 1.5;
+    private final int maxIteraciones;
 
     /** Factor de relajación (0 &lt; ω &lt; 2). */
     private final double omega;
@@ -58,11 +51,12 @@ public class SOR extends Resolutor implements ResolutorIterativo {
      * @param n orden del sistema
      */
     public SOR(double[][] A, double[] b, int n) {
-        this(A, b, n, OMEGA_DEFECTO);
+        this(A, b, n, Parametros.defecto());
     }
 
     /**
-     * Constructor con factor de relajación explícito.
+     * Constructor con factor de relajación explícito (legado; tolerancia y
+     * cota por defecto).
      *
      * @param omega factor de relajación, debe cumplir 0 &lt; ω &lt; 2
      * @throws IllegalArgumentException si ω está fuera del rango
@@ -72,17 +66,46 @@ public class SOR extends Resolutor implements ResolutorIterativo {
     }
 
     /**
-     * Constructor con trazado (ω por defecto).
+     * Constructor con parámetros ajustables.
+     *
+     * @param parametros ω, tolerancia y cota de iteraciones a usar
+     */
+    public SOR(double[][] A, double[] b, int n, Parametros parametros) {
+        this(A, b, n, parametros, null);
+    }
+
+    /**
+     * Constructor con trazado (ω y demás parámetros por defecto).
      *
      * @param traza traza a ir llenando paso a paso, o {@code null} para
      *              ejecutar sin trazado
      */
     public SOR(double[][] A, double[] b, int n, Traza traza) {
-        this(A, b, n, OMEGA_DEFECTO, traza);
+        this(A, b, n, Parametros.defecto(), traza);
     }
 
     /**
-     * Constructor completo: ω explícito y trazado.
+     * Constructor completo: parámetros ajustables y trazado.
+     *
+     * <p><b>Trampa de aridad:</b> {@code new SOR(A, b, n, null)} queda
+     * ambiguo entre {@link Traza} y {@link Parametros}; pase siempre el
+     * tipo explícito. No existe ningún uso así en el proyecto.</p>
+     *
+     * @param parametros ω, tolerancia y cota de iteraciones a usar
+     * @param traza      traza a ir llenando paso a paso, o {@code null} para
+     *                   ejecutar sin trazado
+     */
+    public SOR(double[][] A, double[] b, int n, Parametros parametros, Traza traza) {
+        super(A, b, n, traza);
+        this.omega = parametros.omega();
+        this.tolerancia = parametros.epsilon();
+        this.maxIteraciones = parametros.maxIteraciones();
+    }
+
+    /**
+     * Constructor completo legado: ω explícito y trazado, con el resto de
+     * los parámetros por defecto. Su mensaje de validación de ω es el
+     * histórico y queda byte-pinneado por {@code SORTest}.
      *
      * @param omega factor de relajación, debe cumplir 0 &lt; ω &lt; 2
      * @param traza traza a ir llenando paso a paso, o {@code null} para
@@ -96,6 +119,8 @@ public class SOR extends Resolutor implements ResolutorIterativo {
                     "SOR requiere 0 < ω < 2, recibido: " + omega);
         }
         this.omega = omega;
+        this.tolerancia = Parametros.EPSILON_POR_DEFECTO;
+        this.maxIteraciones = Parametros.MAX_ITERACIONES_POR_DEFECTO;
     }
 
     /**
@@ -125,8 +150,8 @@ public class SOR extends Resolutor implements ResolutorIterativo {
             traza.agregar(new Paso(0, "Aproximación inicial x0 = (0, ..., 0)", null, x, Double.NaN));
         }
 
-        // 2. Bucle principal: hasta converger o agotar MAX_ITERACIONES
-        for (int k = 1; k <= MAX_ITERACIONES; k++) {
+        // 2. Bucle principal: hasta converger o agotar el máximo de iteraciones
+        for (int k = 1; k <= maxIteraciones; k++) {
             double delta = 0.0;
 
             // 2a. Mismo esquema in-place que Gauss-Seidel, con el paso de
@@ -157,13 +182,13 @@ public class SOR extends Resolutor implements ResolutorIterativo {
             }
 
             // 2b. Criterio de paro: la corrección ya no mueve la solución
-            if (delta < TOLERANCIA) {
+            if (delta < tolerancia) {
                 convergio = true;
                 break;
             }
         }
 
-        // Si salió por agotar MAX_ITERACIONES, convergio queda en false
+        // Si salió por agotar el máximo de iteraciones, convergio queda en false
         // y se retorna la última aproximación obtenida.
         return x;
     }

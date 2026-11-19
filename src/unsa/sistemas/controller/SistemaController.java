@@ -1,5 +1,6 @@
 package unsa.sistemas.controller;
 
+import java.util.EnumSet;
 import java.util.Map;
 
 import unsa.sistemas.model.Resolutor;
@@ -10,12 +11,14 @@ import unsa.sistemas.model.direct.GaussJordan;
 import unsa.sistemas.model.iterative.GaussSeidel;
 import unsa.sistemas.model.iterative.Jacobi;
 import unsa.sistemas.model.iterative.MejoramientoIterativo;
+import unsa.sistemas.model.iterative.Parametros;
 import unsa.sistemas.model.iterative.RelajacionSimple;
 import unsa.sistemas.model.iterative.ResolutorIterativo;
 import unsa.sistemas.model.iterative.SOR;
 import unsa.sistemas.model.matrix.Matriz;
 import unsa.sistemas.model.trace.Traza;
 import unsa.sistemas.utils.ValidadorMatriz;
+import unsa.sistemas.utils.ValidadorParametros;
 
 /**
  * Controlador central del sistema.
@@ -55,24 +58,25 @@ public class SistemaController {
 
     /**
      * Fábrica de resolutores: construye la clase concreta con los datos
-     * del sistema, el orden y la traza compartida.
+     * del sistema, el orden, la traza compartida y los parámetros
+     * ajustables. Los métodos directos ignoran {@code parametros}.
      */
     @FunctionalInterface
     private interface FactoriaResolutor {
-        Resolutor crear(double[][] A, double[] b, int n, Traza traza);
+        Resolutor crear(double[][] A, double[] b, int n, Traza traza, Parametros parametros);
     }
 
     /** Registro identificador de método → fábrica del resolutor. */
     private static final Map<String, FactoriaResolutor> registro = Map.of(
-            GAUSS,        (A, b, n, t) -> new EliminacionGaussiana(A, b, n, t),
-            GAUSS_JORDAN, (A, b, n, t) -> new GaussJordan(A, b, n, t),
-            CROUT,        (A, b, n, t) -> new Crout(A, b, n, t),
-            CHOLESKY,     (A, b, n, t) -> new Cholesky(A, b, n, t),
-            JACOBI,       (A, b, n, t) -> new Jacobi(A, b, n, t),
-            GAUSS_SEIDEL, (A, b, n, t) -> new GaussSeidel(A, b, n, t),
-            SOR_METODO,   (A, b, n, t) -> new SOR(A, b, n, t),
-            RELAJACION,   (A, b, n, t) -> new RelajacionSimple(A, b, n, t),
-            MEJORAMIENTO, (A, b, n, t) -> new MejoramientoIterativo(A, b, n, t)
+            GAUSS,        (A, b, n, t, p) -> new EliminacionGaussiana(A, b, n, t),
+            GAUSS_JORDAN, (A, b, n, t, p) -> new GaussJordan(A, b, n, t),
+            CROUT,        (A, b, n, t, p) -> new Crout(A, b, n, t),
+            CHOLESKY,     (A, b, n, t, p) -> new Cholesky(A, b, n, t),
+            JACOBI,       (A, b, n, t, p) -> new Jacobi(A, b, n, p, t),
+            GAUSS_SEIDEL, (A, b, n, t, p) -> new GaussSeidel(A, b, n, p, t),
+            SOR_METODO,   (A, b, n, t, p) -> new SOR(A, b, n, p, t),
+            RELAJACION,   (A, b, n, t, p) -> new RelajacionSimple(A, b, n, p, t),
+            MEJORAMIENTO, (A, b, n, t, p) -> new MejoramientoIterativo(A, b, n, p, t)
     );
 
     /**
@@ -87,9 +91,29 @@ public class SistemaController {
      * @return resultado con la solución o descripción del error
      */
     public Resultado resolver(double[][] datosA, double[] datosB, String metodo) {
+        return resolver(datosA, datosB, metodo, Parametros.defecto());
+    }
+
+    /**
+     * Punto de entrada con parámetros ajustables para la vista.
+     * Resuelve con el dominio ya validado por {@link Parametros}; un
+     * {@code null} aquí es un error del llamador directo y se reporta
+     * como {@link Resultado#error(String)} sin intentar resolver.
+     *
+     * @param datosA     matriz de coeficientes n x n
+     * @param datosB     vector de términos independientes
+     * @param metodo     identificador del método (usar las constantes de esta clase)
+     * @param parametros ω, ε y máximo de iteraciones; los métodos directos
+     *                   los ignoran
+     * @return resultado con la solución o descripción del error
+     */
+    public Resultado resolver(double[][] datosA, double[] datosB, String metodo, Parametros parametros) {
         // 0. Guardia explícita: un lookup sobre null no tendría sentido
         if (metodo == null) {
             return Resultado.error("Método no reconocido: null");
+        }
+        if (parametros == null) {
+            return Resultado.error("Los parámetros no pueden ser null.");
         }
 
         try {
@@ -108,7 +132,7 @@ public class SistemaController {
 
             // 3. Construcción, ejecución y reporte
             Traza traza = new Traza();
-            Resolutor r = fabrica.crear(datosA, datosB, datosA.length, traza);
+            Resolutor r = fabrica.crear(datosA, datosB, datosA.length, traza, parametros);
             double[] solucion = r.resolver();
 
             // Guardia de contrato: un resolutor jamás devuelve null; un null
@@ -121,10 +145,11 @@ public class SistemaController {
             Convergencia convergencia = (r instanceof ResolutorIterativo iter)
                     ? new Convergencia(iter.getIteraciones(), iter.getErrorFinal(), iter.convergio())
                     : null;
-            String nota = convergencia != null
+            String notaDominancia = convergencia != null
                     && (JACOBI.equals(metodo) || GAUSS_SEIDEL.equals(metodo))
                     && !ValidadorMatriz.esDiagonalDominante(A)
                     ? Resultado.NOTA_SIN_DOMINANCIA : null;
+            String nota = unirNotas(notaDominancia, notaLaxa(parametros.epsilon()));
             return Resultado.clasificar(solucion, metodo, traza, convergencia, nota);
         } catch (Exception e) {
             String detalle = e.getMessage() != null ? e.getMessage() : e.toString();
@@ -140,6 +165,84 @@ public class SistemaController {
         NO_CONVERGIO,
         NO_FINITO,
         ERROR
+    }
+
+    /**
+     * Identifica los campos de parámetros de la interfaz, para que la
+     * visibilidad condicional sea un predicado puro headlessly testeable
+     * (D7) y el listener JavaFX solo aplique el conjunto resultante.
+     */
+    public enum ParametroUi {
+        OMEGA,
+        TOLERANCIA,
+        MAX_ITERACIONES
+    }
+
+    /**
+     * Predicado puro de visibilidad: qué campos de parámetros muestra la
+     * interfaz para el método elegido.
+     *
+     * <p>SOR ve los tres (es el único que consume ω); los otros cuatro
+     * iterativos ven ε y N; los directos, los métodos desconocidos y
+     * {@code null} no ven ninguno (la fila completa se oculta).</p>
+     *
+     * @param metodoId identificador del método (constantes de esta clase) o {@code null}
+     * @return el conjunto de campos visibles; nunca {@code null}
+     */
+    public static EnumSet<ParametroUi> parametrosVisiblesPara(String metodoId) {
+        if (metodoId == null) {
+            return EnumSet.noneOf(ParametroUi.class);
+        }
+        return switch (metodoId) {
+            case SOR_METODO -> EnumSet.allOf(ParametroUi.class);
+            case JACOBI, GAUSS_SEIDEL, RELAJACION, MEJORAMIENTO ->
+                    EnumSet.of(ParametroUi.TOLERANCIA, ParametroUi.MAX_ITERACIONES);
+            default -> EnumSet.noneOf(ParametroUi.class);
+        };
+    }
+
+    /**
+     * Une las notas del mensaje de éxito preservando el contrato byte-pinned
+     * de coexistencia (R6.3): primero la de dominancia, después la de
+     * tolerancia laxa, separadas por un espacio.
+     *
+     * @param notaDominancia nota por falta de dominancia diagonal, o {@code null}
+     * @param notaLaxa       nota por ε laxa, o {@code null}
+     * @return la nota combinada, una de las dos, o {@code null} si no hay notas
+     */
+    public static String unirNotas(String notaDominancia, String notaLaxa) {
+        if (notaDominancia == null) {
+            return notaLaxa;
+        }
+        if (notaLaxa == null) {
+            return notaDominancia;
+        }
+        return notaDominancia + " " + notaLaxa;
+    }
+
+    /**
+     * Nota de tolerancia laxa para la ε efectivamente usada.
+     *
+     * @param epsilon tolerancia de la resolución
+     * @return la copia byte-exact de la nota si {@code ε > 1e-5} estricto;
+     *         {@code null} en caso contrario
+     */
+    public static String notaLaxa(double epsilon) {
+        return ValidadorParametros.notaToleranciaLaxa(epsilon);
+    }
+
+    /**
+     * Línea de eco de la tolerancia usada ({@code "ε utilizado: X"}),
+     * obligatoria en todo resultado iterativo (honestidad del éxito con ε
+     * ajustable). Vive aquí por el precedente de {@link #textoDe}: la copia
+     * de la vista se mantiene headlessly testeable.
+     *
+     * @param epsilon tolerancia de la resolución
+     * @return la copia 6 con ε en el formato canónico de
+     *         {@link ValidadorParametros#formatearNumero(double)}
+     */
+    public static String ecoTolerancia(double epsilon) {
+        return ValidadorParametros.ecoTolerancia(epsilon);
     }
 
     /**

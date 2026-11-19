@@ -26,29 +26,91 @@ import unsa.sistemas.model.trace.Traza;
  */
 public class MejoramientoIterativo extends Resolutor implements ResolutorIterativo {
 
-    private static final double TOLERANCIA = 1e-7;
-    private static final int MAX_ITERACIONES = 1000;
+    /** Tolerancia sobre la norma infinito del residuo (criterio {@code <=}). */
+    private final double tolerancia;
+
+    /** Cota máxima de iteraciones de mejoramiento antes de detenerse sin converger. */
+    private final int maxIteraciones;
 
     private final double[] x0Inicial;
     private int iteraciones;
     private double errorFinal;
     private boolean convergio;
 
+    /**
+     * @param A matriz de coeficientes n x n
+     * @param b vector de términos independientes
+     * @param n orden del sistema
+     */
     public MejoramientoIterativo(double[][] A, double[] b, int n) {
-        this(A, b, null, n, null);
+        this(A, b, null, n, Parametros.defecto(), null);
     }
 
+    /**
+     * Constructor con trazado (parámetros por defecto, x0 = Gauss).
+     *
+     * <p><b>Trampa de aridad:</b> {@code new MejoramientoIterativo(A, b, n, null)}
+     * queda ambiguo entre {@link Traza} y {@link Parametros}; pase siempre el
+     * tipo explícito. No existe ningún uso así en el proyecto.</p>
+     *
+     * @param traza traza a ir llenando paso a paso, o {@code null} sin trazado
+     */
     public MejoramientoIterativo(double[][] A, double[] b, int n, Traza traza) {
-        this(A, b, null, n, traza);
+        this(A, b, null, n, Parametros.defecto(), traza);
     }
 
+    /**
+     * Constructor con parámetros ajustables (x0 = Gauss).
+     *
+     * @param parametros tolerancia y cota de iteraciones a usar (ω se ignora)
+     */
+    public MejoramientoIterativo(double[][] A, double[] b, int n, Parametros parametros) {
+        this(A, b, null, n, parametros, null);
+    }
+
+    /**
+     * Constructor completo con parámetros ajustables y trazado (x0 = Gauss).
+     *
+     * @param parametros tolerancia y cota de iteraciones a usar (ω se ignora)
+     * @param traza      traza a ir llenando paso a paso, o {@code null} sin trazado
+     */
+    public MejoramientoIterativo(double[][] A, double[] b, int n, Parametros parametros, Traza traza) {
+        this(A, b, null, n, parametros, traza);
+    }
+
+    /**
+     * @param A  matriz de coeficientes n x n
+     * @param b  vector de términos independientes
+     * @param x0 aproximación inicial, o {@code null} para calcularla con Gauss
+     * @param n  orden del sistema
+     */
     public MejoramientoIterativo(double[][] A, double[] b, double[] x0, int n) {
-        this(A, b, x0, n, null);
+        this(A, b, x0, n, Parametros.defecto(), null);
     }
 
+    /**
+     * Constructor con aproximación inicial, trazado y parámetros por defecto.
+     *
+     * @param x0    aproximación inicial, o {@code null} para calcularla con Gauss
+     * @param traza traza a ir llenando paso a paso, o {@code null} sin trazado
+     */
     public MejoramientoIterativo(double[][] A, double[] b, double[] x0, int n, Traza traza) {
+        this(A, b, x0, n, Parametros.defecto(), traza);
+    }
+
+    /**
+     * Constructor completo: semilla opcional, parámetros ajustables y trazado.
+     *
+     * @param x0         aproximación inicial, o {@code null} para calcularla con Gauss
+     * @param parametros tolerancia y cota de iteraciones a usar (ω se ignora)
+     * @param traza      traza a ir llenando paso a paso, o {@code null} sin trazado
+     */
+    private MejoramientoIterativo(double[][] A, double[] b, double[] x0, int n,
+                                  Parametros parametros, Traza traza) {
         super(A, b, n, traza);
         this.x0Inicial = (x0 != null) ? x0.clone() : null;
+        this.tolerancia = parametros.epsilon();
+        this.maxIteraciones = parametros.maxIteraciones();
     }
 
     @Override
@@ -78,13 +140,13 @@ public class MejoramientoIterativo extends Resolutor implements ResolutorIterati
         double normaR = Normas.normaInfinito(r);
         errorFinal = normaR;
 
-        if (normaR <= TOLERANCIA) {
+        if (normaR <= tolerancia) {
             convergio = true;
             return x;
         }
 
         // 3. Iteraciones de corrección: mientras ||r|| > ε
-        for (int k = 1; k <= MAX_ITERACIONES; k++) {
+        for (int k = 1; k <= maxIteraciones; k++) {
             iteraciones = k;
 
             // Sea z = Gauss(A, r, n)
@@ -112,7 +174,7 @@ public class MejoramientoIterativo extends Resolutor implements ResolutorIterati
                 traza.agregar(new Paso(k, "Iteración " + k + " (corrección)", null, x.clone(), normaR));
             }
 
-            if (normaR <= TOLERANCIA) {
+            if (normaR <= tolerancia) {
                 convergio = true;
                 break;
             }

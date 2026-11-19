@@ -22,10 +22,10 @@ import unsa.sistemas.model.trace.Traza;
 public class GaussSeidel extends Resolutor implements ResolutorIterativo {
 
     /** Tolerancia absoluta sobre la diferencia entre iteraciones sucesivas. */
-    private static final double TOLERANCIA = 1e-7;
+    private final double tolerancia;
 
     /** Cota máxima de iteraciones antes de detenerse sin converger. */
-    private static final int MAX_ITERACIONES = 1000;
+    private final int maxIteraciones;
 
     private int iteraciones;
     private double errorFinal;
@@ -37,17 +37,44 @@ public class GaussSeidel extends Resolutor implements ResolutorIterativo {
      * @param n orden del sistema
      */
     public GaussSeidel(double[][] A, double[] b, int n) {
-        super(A, b, n);
+        this(A, b, n, Parametros.defecto());
     }
 
     /**
-     * Constructor con trazado.
+     * Constructor con parámetros ajustables.
+     *
+     * @param parametros tolerancia y cota de iteraciones a usar (ω se ignora)
+     */
+    public GaussSeidel(double[][] A, double[] b, int n, Parametros parametros) {
+        this(A, b, n, parametros, null);
+    }
+
+    /**
+     * Constructor con trazado (parámetros por defecto).
      *
      * @param traza traza a ir llenando paso a paso, o {@code null} para
      *              ejecutar sin trazado
      */
     public GaussSeidel(double[][] A, double[] b, int n, Traza traza) {
+        this(A, b, n, Parametros.defecto(), traza);
+    }
+
+    /**
+     * Constructor completo: parámetros ajustables y trazado.
+     *
+     * <p><b>Trampa de aridad:</b> {@code new GaussSeidel(A, b, n, null)} queda
+     * ambiguo entre {@link Traza} y {@link Parametros}; pase siempre el
+     * tipo explícito ({@code (Traza) null} o un {@code Parametros}).
+     * No existe ningún uso así en el proyecto.</p>
+     *
+     * @param parametros tolerancia y cota de iteraciones a usar (ω se ignora)
+     * @param traza      traza a ir llenando paso a paso, o {@code null} para
+     *                   ejecutar sin trazado
+     */
+    public GaussSeidel(double[][] A, double[] b, int n, Parametros parametros, Traza traza) {
         super(A, b, n, traza);
+        this.tolerancia = parametros.epsilon();
+        this.maxIteraciones = parametros.maxIteraciones();
     }
 
     @Override
@@ -70,8 +97,8 @@ public class GaussSeidel extends Resolutor implements ResolutorIterativo {
             traza.agregar(new Paso(0, "Aproximación inicial x0 = (0, ..., 0)", null, x, Double.NaN));
         }
 
-        // 2. Bucle principal: hasta converger o agotar MAX_ITERACIONES
-        for (int k = 1; k <= MAX_ITERACIONES; k++) {
+        // 2. Bucle principal: hasta converger o agotar el máximo de iteraciones
+        for (int k = 1; k <= maxIteraciones; k++) {
             double delta = 0.0;
 
             // 2a. Cada componente i se despeja de la diagonal y se escribe
@@ -103,13 +130,13 @@ public class GaussSeidel extends Resolutor implements ResolutorIterativo {
             }
 
             // 2b. Criterio de paro: la corrección ya no mueve la solución
-            if (delta < TOLERANCIA) {
+            if (delta < tolerancia) {
                 convergio = true;
                 break;
             }
         }
 
-        // Si salió por agotar MAX_ITERACIONES, convergio queda en false
+        // Si salió por agotar el máximo de iteraciones, convergio queda en false
         // y se retorna la última aproximación obtenida.
         return x;
     }
