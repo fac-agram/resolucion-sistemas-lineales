@@ -9,6 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import unsa.sistemas.controller.SistemaController;
+import unsa.sistemas.controller.SistemaController.Estado;
+import unsa.sistemas.controller.SistemaController.Resultado;
 import unsa.sistemas.model.trace.Traza;
 
 public class MejoramientoIterativoTest {
@@ -198,5 +201,47 @@ public class MejoramientoIterativoTest {
         for (double v : x) {
             assertTrue(Double.isNaN(v), "El ultimo iterado es el calculado, sin sanitizar");
         }
+    }
+
+    /**
+     * R4.2 — el tope N sobre MEJORAMIENTO con iterado FINITO (hueco dejado por
+     * la desviacion #5 del apply: el unico test de tope de la suite corrria
+     * sobre Jacobi, y aqui el tope solo se veia con iterados NaN). La nuance
+     * de la tabla D decia que la correccion resuelve A*z = r "exactamente";
+     * en aritmetica IEEE el residuo corregido no puede bajar del piso-ulp del
+     * producto A*x. Fixture: b = {3e11, 5e11+1} mantiene los numeros literales
+     * del escenario (eps=1e-7, N=3): la solucion verdadera {79999999999.8,
+     * 140000000000.4} no es representable, la semilla Gauss deja
+     * ||r||inf = 2^-14 > eps (el bucle entra de verdad) y cada correccion
+     * queda sub-½ulp de x: punto fijo con ||r||inf clavado en 2^-14
+     * (6.103515625e-05), ~610 veces encima de eps. Sonda: con N=1000 agota
+     * las 1000 correcciones con iterados finitos, bit-identica entre carreras.
+     */
+    @Test
+    void verificaTopeDeIteracionesHonrado() {
+        // Romper: `k <= maxIteraciones` -> `k < maxIteraciones` (off-by-one del tope).
+        double[] b = {3e11, 5e11 + 1};
+        Parametros parametros = new Parametros(1.5, 1e-7, 3);
+        MejoramientoIterativo m = new MejoramientoIterativo(A_CANONICA, b, 2, parametros);
+        double[] x = m.resolver();
+
+        assertFalse(m.convergio(), "Con el tope en 3 la carrera no convergio");
+        assertEquals(3, m.getIteraciones(), "Correcciones ejecutadas == tope 3 exacto");
+        assertEquals(6.103515625e-05, m.getErrorFinal(), 0.0,
+                "El residuo anclado es exactamente 2^-14, bit-a-bit");
+        for (double v : x) {
+            assertTrue(Double.isFinite(v), "El tope se alcanza con iterado finito, sin NaN/Inf");
+        }
+        // Verdad de suelo: el anclado ulp no destruye la solucion (error relativo ~1e-16).
+        assertEquals(79999999999.8, x[0], 1e-3, "x1 = 79999999999.8 dentro de 1e-3 absoluto");
+        assertEquals(140000000000.4, x[1], 1e-3, "x2 = 140000000000.4 dentro de 1e-3 absoluto");
+
+        // Semantica de mensaje del escenario R4.2, en el controlador con el mismo fixture.
+        SistemaController c = new SistemaController();
+        Resultado r = c.resolver(A_CANONICA, b, SistemaController.MEJORAMIENTO, parametros);
+        assertEquals(Estado.NO_CONVERGIO, r.getEstado(), "Estado honesto: NO_CONVERGIO");
+        assertTrue(r.getMensaje().contains("(3)"), "El mensaje nombra el tope 3");
+        assertEquals(3, r.getConvergencia().iteraciones(), "El controlador refleja el tope agotado");
+        assertNotNull(r.getSolucion(), "Se entrega la ultima aproximacion finita (R8.1)");
     }
 }
