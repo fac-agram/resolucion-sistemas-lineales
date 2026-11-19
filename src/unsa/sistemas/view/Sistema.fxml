@@ -5,6 +5,7 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -65,6 +66,21 @@
                 
                 <Label text="Método de resolución" />
                 <ComboBox fx:id="comboMetodo" disable="true" maxWidth="Infinity" promptText="Primero seleccioná un tipo de método" />
+
+                <HBox fx:id="filaParametros" spacing="10" visible="false" managed="false">
+                    <VBox fx:id="celdaOmega" spacing="3" visible="false" managed="false">
+                        <Label text="Factor de relajación ω (0 &lt; ω &lt; 2)" />
+                        <TextField fx:id="campoOmega" promptText="Factor de relajación ω (0 &lt; ω &lt; 2)" text="1.5" />
+                    </VBox>
+                    <VBox spacing="3">
+                        <Label text="Tolerancia ε (1e-12 a 1e-3)" />
+                        <TextField fx:id="campoTolerancia" promptText="Tolerancia ε (1e-12 a 1e-3)" text="1e-7" />
+                    </VBox>
+                    <VBox spacing="3">
+                        <Label text="Máximo de iteraciones (1 a 10000)" />
+                        <TextField fx:id="campoIteraciones" promptText="Máximo de iteraciones (1 a 10000)" text="1000" />
+                    </VBox>
+                </HBox>
                 
                 <HBox spacing="10">
                     <Button onAction="#resolverSistema" styleClass="boton-principal" text="Resolver" />

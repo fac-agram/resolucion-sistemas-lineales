@@ -101,6 +101,21 @@ bash package.sh
 | `RELAJACION` | Relajación simple. |
 | `MEJORAMIENTO` | Corrección iterativa sobre una aproximación previa. |
 
+## Parámetros ajustables de los métodos iterativos
+
+Al elegir un método iterativo aparecen tres campos bajo el selector de método (los métodos directos no los muestran). Los valores por defecto son exactamente las constantes que siempre usó la app: **ω = 1.5, ε = 1e-7, máximo de iteraciones = 1000**, y ya vienen precargados.
+
+| Campo (etiqueta en la interfaz) | Dominio válido | Defecto |
+|---|---|---|
+| `Factor de relajación ω (0 < ω < 2)` | `0 < ω < 2` (abierto) — solo lo usa SOR | `1.5` |
+| `Tolerancia ε (1e-12 a 1e-3)` | `1e-12 ≤ ε ≤ 1e-3` (inclusivo) | `1e-7` |
+| `Máximo de iteraciones (1 a 10000)` | entero `1 ≤ N ≤ 10000` (inclusivo) | `1000` |
+
+- **Rechazo antes de resolver:** un valor fuera de dominio o no numérico se rechaza con un mensaje en español en la barra de estado y **no se intenta ninguna resolución**. "Limpiar" restaura los textos por defecto (`1.5`, `1e-7`, `1000`).
+- **Echo obligatorio:** todo resultado iterativo (converja o no) muestra la línea `ε utilizado: X` con la tolerancia realmente usada. Como `OK` significa "convergió con el ε que elegiste", el ε usado siempre es visible.
+- **Advertencia ámbar por tolerancia laxa:** con `ε > 1e-5` la resolución sigue siendo `OK`, pero el mensaje agrega la nota `Tolerancia laxa (X): el error por componente puede acercarse a la tolerancia.` — el error por componente puede quedar tan cerca del resultado como marque ese ε. Con `ε ≤ 1e-5` la nota no aparece.
+- **Tope de iteraciones:** agotar el máximo produce `NO_CONVERGIO` honesto, mostrando la última aproximación con el número de tope en el mensaje.
+
 ## Estructura del proyecto
 
 ```

@@ -1,8 +1,11 @@
 package unsa.sistemas.view;
 
 import unsa.sistemas.controller.SistemaController;
+import unsa.sistemas.controller.SistemaController.ParametroUi;
+import unsa.sistemas.model.iterative.Parametros;
 import unsa.sistemas.model.trace.Paso;
 import unsa.sistemas.model.trace.Traza;
+import unsa.sistemas.utils.ValidadorParametros;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,7 +24,9 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
@@ -48,6 +54,21 @@ public class SistemaFXController {
     private ComboBox<String> comboMetodo;
 
     @FXML
+    private HBox filaParametros;
+
+    @FXML
+    private VBox celdaOmega;
+
+    @FXML
+    private TextField campoOmega;
+
+    @FXML
+    private TextField campoTolerancia;
+
+    @FXML
+    private TextField campoIteraciones;
+
+    @FXML
     private TextArea areaResultado;
 
     @FXML
@@ -62,6 +83,12 @@ public class SistemaFXController {
     // Datos del sistema cargado
     private double[][] matrizA;
     private double[] vectorB;
+
+    /**
+     * Parámetros efectivamente usados en la última resolución: alimentan
+     * el eco obligatorio {@code "ε utilizado: X"} del panel de resultados.
+     */
+    private Parametros ultimosParametros;
 
     private final SistemaController sistemaController = new SistemaController();
 
@@ -111,6 +138,34 @@ public class SistemaFXController {
                     );
                 }
             });
+
+        // Primera y única escucha del método elegido: aplica el predicado
+        // puro de visibilidad (D7) a la fila de parámetros. Sin este
+        // listener el combo no tenía ninguna (verificado sobre 59f5777).
+        comboMetodo.valueProperty().addListener((observable, anterior, nuevo) -> {
+
+            String metodoId = (nuevo == null) ? null : obtenerMetodoSeleccionado();
+
+            aplicarVisibilidadParametros(SistemaController.parametrosVisiblesPara(metodoId));
+        });
+    }
+
+    /**
+     * Aplica el conjunto visible de parámetros (predicado puro de
+     * {@link SistemaController#parametrosVisiblesPara(String)}) a la fila
+     * completa y a la celda de ω, que solo SOR muestra. El listener no
+     * decide nada: solo traduce el conjunto a {@code visible}/{@code managed}.
+     */
+    private void aplicarVisibilidadParametros(EnumSet<ParametroUi> visibles) {
+
+        boolean mostrarFila = !visibles.isEmpty();
+        boolean mostrarOmega = visibles.contains(ParametroUi.OMEGA);
+
+        filaParametros.setVisible(mostrarFila);
+        filaParametros.setManaged(mostrarFila);
+
+        celdaOmega.setVisible(mostrarOmega);
+        celdaOmega.setManaged(mostrarOmega);
     }
 
     // ==========================================
@@ -534,11 +589,42 @@ public class SistemaFXController {
         return;
     }
 
+    // Estado de visibilidad ANTES de leer: se aplican los campos que el
+    // predicado marca como visibles para este método. Los campos ocultos
+    // (p. ej. un ω con texto viejo tras cambiar de método) se leen null y
+    // el validador los omite: nunca se parsean.
+    EnumSet<ParametroUi> visibles = SistemaController.parametrosVisiblesPara(metodo);
+    aplicarVisibilidadParametros(visibles);
+
+    String omegaTexto = visibles.contains(ParametroUi.OMEGA) ? campoOmega.getText() : null;
+    String toleranciaTexto = visibles.contains(ParametroUi.TOLERANCIA) ? campoTolerancia.getText() : null;
+    String iteracionesTexto = visibles.contains(ParametroUi.MAX_ITERACIONES) ? campoIteraciones.getText() : null;
+
+    // R5.1: Rechazo en la interfaz ANTES de cualquier intento de resolución.
+    List<String> errores = ValidadorParametros.errores(omegaTexto, toleranciaTexto, iteracionesTexto);
+
+    if (!errores.isEmpty()) {
+        labelEstado.setText(errores.get(0));
+        labelEstado.getStyleClass().removeAll("estado-ok", "estado-advertencia", "estado-error");
+        labelEstado.getStyleClass().add("estado-error");
+        return;
+    }
+
+    // Campos ocultos toman el default canónico; los visibles ya validan.
+    // El record re-valida su dominio (doble defensa R5.5): imposible llegar
+    // a construir un Parametros inválido desde aquí.
+    Parametros parametros = new Parametros(
+        omegaTexto == null ? Parametros.OMEGA_POR_DEFECTO : Double.parseDouble(omegaTexto),
+        toleranciaTexto == null ? Parametros.EPSILON_POR_DEFECTO : Double.parseDouble(toleranciaTexto),
+        iteracionesTexto == null ? Parametros.MAX_ITERACIONES_POR_DEFECTO : (int) Double.parseDouble(iteracionesTexto));
+
+    ultimosParametros = parametros;
+
     // Enviar los datos al controlador matemático.
     // Se utilizan copias para conservar los datos originales.
     double[][] matrizCopia = copiarMatriz(matrizA);
     double[] vectorCopia = vectorB.clone();
-    SistemaController.Resultado resultado = sistemaController.resolver(matrizCopia, vectorCopia, metodo);
+    SistemaController.Resultado resultado = sistemaController.resolver(matrizCopia, vectorCopia, metodo, parametros);
     // Mostrar el resultado
     mostrarResultado(resultado);
 
@@ -610,6 +696,13 @@ public class SistemaFXController {
                  .append(convergencia.iteraciones());
             texto.append("\nError final: ")
                  .append(formatear(convergencia.errorFinal()));
+            // Eco obligatorio (R4): el éxito con ε ajustable solo es honesto
+            // si el usuario ve con qué ε se resolvió. Dentro del guardia de
+            // convergencia: nunca aparece para directos ni para ERROR.
+            if (ultimosParametros != null) {
+                texto.append("\n")
+                     .append(SistemaController.ecoTolerancia(ultimosParametros.epsilon()));
+            }
             texto.append("\nConvergió: ")
                  .append(convergencia.convergio() ? "Sí" : "No");
         }
@@ -715,6 +808,13 @@ public class SistemaFXController {
         comboMetodo.getItems().clear();
         comboMetodo.getSelectionModel().clearSelection();
         comboMetodo.setDisable(true);
+
+        // R7.4: los campos vuelven a los valores por defecto visibles y la
+        // fila se oculta hasta que se elija un método iterativo.
+        campoOmega.setText("1.5");
+        campoTolerancia.setText("1e-7");
+        campoIteraciones.setText("1000");
+        aplicarVisibilidadParametros(EnumSet.noneOf(ParametroUi.class));
 
         labelEstado.setText(
             "Listo para cargar un sistema."
