@@ -5,13 +5,13 @@ import unsa.sistemas.controller.SistemaController.ParametroUi;
 import unsa.sistemas.model.iterative.Parametros;
 import unsa.sistemas.model.trace.Paso;
 import unsa.sistemas.model.trace.Traza;
+import unsa.sistemas.utils.TextosVista;
 import unsa.sistemas.utils.ValidadorParametros;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -456,31 +456,7 @@ public class SistemaFXController {
     
     private void mostrarSistema() {
 
-        StringBuilder texto = new StringBuilder();
-
-            for (int i = 0; i < matrizA.length; i++) {
-
-                for (int j = 0; j < matrizA[i].length; j++) {
-
-                    double coeficiente = matrizA[i][j];
-
-                    // Agregar el signo correspondiente
-                    if (j > 0) {
-                        if (coeficiente < 0) {
-                            texto.append(" - ");
-                        } else {
-                            texto.append(" + ");
-                        }
-                    } else if (coeficiente < 0) {
-                        texto.append("-");
-                    }
-
-                    // Mostrar el valor absoluto del coeficiente
-                    texto.append(formatear(Math.abs(coeficiente))).append("·x").append(j + 1);
-                }
-                texto.append(" = ").append(formatear(vectorB[i])).append("\n");
-            }
-        areaSistema.setText(texto.toString());
+        areaSistema.setText(TextosVista.textoEcuaciones(matrizA, vectorB));
     }
 
 
@@ -525,22 +501,8 @@ public class SistemaFXController {
 
     private String formatear(double valor) {
 
-    if (Double.isNaN(valor)) {
-        return "NaN";
+        return TextosVista.formatear(valor);
     }
-
-    if (Double.isInfinite(valor)) {
-        return valor > 0 ? "Infinity" : "-Infinity";
-    }
-
-    if (valor == 0.0) {
-        return "0";
-    }
-
-    return BigDecimal.valueOf(valor)
-            .stripTrailingZeros()
-            .toPlainString();
-}
 
     // ==========================================
     // RESOLVER SISTEMA
