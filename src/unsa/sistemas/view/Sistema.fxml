@@ -6,6 +6,8 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -43,10 +45,23 @@
                     <Label fx:id="labelArchivo" text="Ningún archivo seleccionado" wrapText="true" />
                 </HBox>
 
+                <!-- SELECTOR DE VISTA: Ecuaciones / Matricial (grupo exclusivo) -->
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <ToggleButton fx:id="botonVistaEcuaciones" selected="true" text="Ecuaciones">
+                        <toggleGroup>
+                            <ToggleGroup fx:id="grupoVista" />
+                        </toggleGroup>
+                    </ToggleButton>
+                    <ToggleButton fx:id="botonVistaMatricial" text="Matricial" toggleGroup="$grupoVista" />
+                </HBox>
+
+                <VBox fx:id="zonaEcuaciones" spacing="10" VBox.vgrow="ALWAYS">
                 <Label text="Sistema de ecuaciones" />
 
                 <TextArea fx:id="areaSistema" editable="false" prefRowCount="5" promptText="Aquí aparecerán las ecuaciones..." wrapText="true" VBox.vgrow="ALWAYS" />
+                </VBox>
 
+                <VBox fx:id="zonaMatricial" spacing="10" visible="false" managed="false" VBox.vgrow="ALWAYS">
                 <Label text="Forma matricial" />
                 <HBox alignment="TOP_CENTER" spacing="15">
                 <!-- MATRIZ A -->
@@ -60,6 +75,8 @@
                   <TextArea fx:id="areaVectorB" editable="false" prefColumnCount="8" prefHeight="111.0" prefRowCount="6" prefWidth="57.0" promptText="Términos independientes..." wrapText="false" VBox.vgrow="ALWAYS" />
                   </VBox>
                   </HBox>
+                <TextArea fx:id="areaMatrizAumentada" editable="false" prefRowCount="6" promptText="Matriz aumentada..." wrapText="false" VBox.vgrow="ALWAYS" />
+                </VBox>
 
                 <Label text="Tipo de método" />
                 <ComboBox fx:id="comboTipoMetodo" maxWidth="Infinity" promptText="Seleccionar tipo de método" />

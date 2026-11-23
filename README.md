@@ -116,6 +116,10 @@ Al elegir un método iterativo aparecen tres campos bajo el selector de método 
 - **Advertencia ámbar por tolerancia laxa:** con `ε > 1e-5` la resolución sigue siendo `OK`, pero el mensaje agrega la nota `Tolerancia laxa (X): el error por componente puede acercarse a la tolerancia.` — el error por componente puede quedar tan cerca del resultado como marque ese ε. Con `ε ≤ 1e-5` la nota no aparece.
 - **Tope de iteraciones:** agotar el máximo produce `NO_CONVERGIO` honesto, mostrando la última aproximación con el número de tope en el mensaje.
 
+## Vistas del sistema: ecuaciones y matriz
+
+Junto al ingreso del sistema hay un selector con dos botones, **Ecuaciones** y **Matricial**, que alternan qué bloque se muestra: el bloque de ecuaciones (`4·x1 + 1·x2 + 1·x3 = 6`) o la forma matricial (`Matriz A`, `Vector b` y la **matriz aumentada `[A|b]`** alineada por columnas, sin notación científica). Son solo dos vistas de los mismos datos: cargar un sistema actualiza siempre las dos zonas, aunque estén ocultas, así que cambiar de vista no vuelve a procesar nada. La vista arranca en **Ecuaciones**, se mantiene por sesión (no se recuerda entre arranques) y **"Limpiar"** la devuelve a Ecuaciones vaciando también la matriz aumentada. El selector funciona de forma independiente de la fila de parámetros de los métodos iterativos.
+
 ## Estructura del proyecto
 
 ```
