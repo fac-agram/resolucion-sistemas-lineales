@@ -25,8 +25,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleButton;
-import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.TitledPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.control.ButtonBar;
@@ -49,13 +47,6 @@ public class SistemaFXController {
     @FXML
     private TextArea areaVectorB;
 
-    // Zonas alternativas del selector de vista (Ecuaciones / Matricial)
-    @FXML
-    private VBox zonaEcuaciones;
-
-    @FXML
-    private VBox zonaMatricial;
-
     @FXML
     private TextArea areaMatrizAumentada;
 
@@ -70,16 +61,6 @@ public class SistemaFXController {
 
     @FXML
     private VBox celdaOmega;
-
-    // Selector de vista: grupo exclusivo y sus dos botones
-    @FXML
-    private ToggleGroup grupoVista;
-
-    @FXML
-    private ToggleButton botonVistaEcuaciones;
-
-    @FXML
-    private ToggleButton botonVistaMatricial;
 
     @FXML
     private TextField campoOmega;
@@ -100,21 +81,14 @@ public class SistemaFXController {
     private TitledPane paneProcedimiento;
 
     @FXML
+    private TitledPane paneMatrizAumentada;
+
+    @FXML
     private Label labelEstado;
 
     // Datos del sistema cargado
     private double[][] matrizA;
     private double[] vectorB;
-
-    /** Modos del selector de vista: bloque de ecuaciones o forma matricial. */
-    private enum VistaModo { ECUACIONES, MATRICIAL }
-
-    /**
-     * Vista activa. Arranca en ECUACIONES (coherente con los defaults del
-     * FXML: botonVistaEcuaciones selected, zonaMatricial oculta). Es
-     * por-sesión: "Limpiar" la resetea y ninguna carga la modifica.
-     */
-    private VistaModo vistaModo = VistaModo.ECUACIONES;
 
     /**
      * Parámetros efectivamente usados en la última resolución: alimentan
@@ -180,16 +154,6 @@ public class SistemaFXController {
 
             aplicarVisibilidadParametros(SistemaController.parametrosVisiblesPara(metodoId));
         });
-
-        // Escucha del selector de vista: el listener no decide nada, solo
-        // traduce el botón elegido a VistaModo y delega la visibilidad. La
-        // propiedad observable del grupo es selectedToggleProperty() (las
-        // ToggleGroup no exponen selectedValueProperty). null cae a
-        // ECUACIONES: default seguro.
-        grupoVista.selectedToggleProperty().addListener((observable, anterior, nuevo) -> {
-            vistaModo = (nuevo == botonVistaMatricial) ? VistaModo.MATRICIAL : VistaModo.ECUACIONES;
-            aplicarVista(vistaModo);
-        });
     }
 
     /**
@@ -211,20 +175,20 @@ public class SistemaFXController {
     }
 
     /**
-     * Único escritor de visibilidad de las zonas de vista: traduce el modo
-     * a {@code visible}/{@code managed} (precedente de
-     * {@link #aplicarVisibilidadParametros}). Nunca re-renderiza ni
-     * re-parsea: las zonas ocultas conservan el último texto cargado.
+     * Único escritor del estado del panel de la matriz aumentada. Encarna la
+     * asimetría R1.2/R5: una carga exitosa solo HABILITA el panel y jamás toca
+     * su propiedad {@code expanded} (el usuario decide si lo mira); "Limpiar"
+     * en cambio lo inhabilita Y lo colapsa, espejando la disciplina ya
+     * existente del panel de procedimiento. Es solo escritor: nunca lee
+     * propiedades del nodo ni duplica su estado en campos del controlador.
      */
-    private void aplicarVista(VistaModo modo) {
-
-        boolean verEcuaciones = modo == VistaModo.ECUACIONES;
-
-        zonaEcuaciones.setVisible(verEcuaciones);
-        zonaEcuaciones.setManaged(verEcuaciones);
-
-        zonaMatricial.setVisible(!verEcuaciones);
-        zonaMatricial.setManaged(!verEcuaciones);
+    private void aplicarEstadoMatriz(boolean presente) {
+        if (presente) {
+            paneMatrizAumentada.setDisable(false);
+            return;
+        }
+        paneMatrizAumentada.setExpanded(false);
+        paneMatrizAumentada.setDisable(true);
     }
 
     /** Deposita la matriz aumentada [A|b] en su TextArea usando el texto puro de la vista. */
@@ -296,6 +260,7 @@ public class SistemaFXController {
             mostrarSistema();
             mostrarFormaMatricial();
             mostrarMatrizAumentada();
+            aplicarEstadoMatriz(true);
 
             areaResultado.clear();
             areaProcedimiento.clear();
@@ -395,6 +360,7 @@ public class SistemaFXController {
         mostrarSistema();
         mostrarFormaMatricial();
         mostrarMatrizAumentada();
+        aplicarEstadoMatriz(true);
 
         areaResultado.clear();
         areaProcedimiento.clear();
@@ -832,6 +798,8 @@ public class SistemaFXController {
         areaProcedimiento.clear();
         paneProcedimiento.setExpanded(false);
         paneProcedimiento.setDisable(true);
+        // El panel de la matriz aumentada vuelve a su estado de arranque (R5.1).
+        aplicarEstadoMatriz(false);
 
         comboTipoMetodo.getSelectionModel().clearSelection();
         comboMetodo.getItems().clear();
@@ -844,15 +812,6 @@ public class SistemaFXController {
         campoTolerancia.setText("1e-7");
         campoIteraciones.setText("1000");
         aplicarVisibilidadParametros(EnumSet.noneOf(ParametroUi.class));
-
-        // Reset de vista a ECUACIONES (R5.1). El setSelected redundario NO
-        // dispara al listener cuando el botón ya estaba seleccionado
-        // (probe: ToggleGroup solo notifica cambios reales), por eso se llama
-        // a aplicarVista explícitamente: la visibilidad queda garantizada
-        // venga de MATRICIAL (listener) o de ECUACIONES (silent-setSelected).
-        vistaModo = VistaModo.ECUACIONES;
-        botonVistaEcuaciones.setSelected(true);
-        aplicarVista(vistaModo);
 
         labelEstado.setText(
             "Listo para cargar un sistema."

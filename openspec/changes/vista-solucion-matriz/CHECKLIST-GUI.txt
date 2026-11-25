@@ -1,0 +1,19 @@
+CHECKLIST GUI — vista-solucion-matriz (filas MANUALES: sin TestFX en el repo)
+Ejecutar: sh ./mvnw -o javafx:run — completar con el usuario; registrar UNVERIFIED hasta firma.
+Fuerta única: design.md §Checklist rows (this change). Byte-expected rows are byte-locked.
+
+Fila | Requisito    | Pasos                                                          | Resultado esperado                                                     | OK/FAIL/UNVERIFIED
+-----|--------------|----------------------------------------------------------------|------------------------------------------------------------------------|-------------------
+  1  | R1.1         | Open app.                                                      | No selector; left = "Sistema de ecuaciones" + areaSistema only; pane   | UNVERIFIED
+     |              |                                                                | Matriz aumentada [A|b] del sistema disabled+collapsed; A/b hosts       |
+     |              |                                                                | invisible; status "Listo para cargar un sistema."                      |
+  2  | R6/R1.2      | Load canonical 3x3; click header.                              | Load enables pane; expand shows [ 4 1 1 | 6 ] / [ 1 3 1 | 5 ] /        | UNVERIFIED
+     |              |                                                                | [ 1 1 3 | 5 ] (13 ch/line, one |); status byte-stable across toggle;  |
+     |              |                                                                | zero recompute.                                                        |
+  3  | R4.1/R4.2    | Load second (manual) system while collapsed.                   | Stays collapsed; expand shows L2, never stale L1.                      | UNVERIFIED
+  4  | R4.3         | Inspect hidden pair via driver.                                | areaMatrizA rows [ 4  1  1  ]; areaVectorB rows [ 6 ]; present,        | UNVERIFIED
+     |              |                                                                | not visible.                                                           |
+  5  | R5.1         | Expanded + result filled -> "Limpiar".                         | Five text targets empty; pane disabled+collapsed; params               | UNVERIFIED
+     |              |                                                                | 1.5/1e-7/1000; status "Listo para cargar un sistema."                  |
+  6  | R6           | Load wide fixture A=[[1,1,1],[3e11,1,1],[0.5,1,1]], b=[3,4,5]. | [ 300000000000 1 1 | 4 ]; widths 12/1/1; h-scroll, no wrap,            | UNVERIFIED
+     |              |                                                                | alignment intact.                                                      |
