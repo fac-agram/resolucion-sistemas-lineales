@@ -1,4 +1,4 @@
-package unsa.sistemas.model.iterative;
+import unsa.sistemas.model.iterative.*;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
