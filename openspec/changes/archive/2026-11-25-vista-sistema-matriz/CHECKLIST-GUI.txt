@@ -1,0 +1,27 @@
+CHECKLIST GUI — vista-sistema-matriz (C3, filas MANUALES: sin TestFX en el repo)
+Ejecutar: sh ./mvnw -o javafx:run — completar con el usuario; registrar UNVERIFIED hasta firma.
+
+Fila | Requisito              | Pasos                                                              | Resultado esperado                                                   | OK/FAIL/UNVERIFIED
+-----|----------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|-------------------
+  1  | R6(1)/R1.1 look      | Abrir la app. Observar el selector sobre las zonas.                  | Dos botones segmentados; exactamente UNO resaltado = "Ecuaciones";   | UNVERIFIED
+     |                      |                                                                      | zona matricial oculta SIN hueco (managed=false: el espacio no se     |
+     |                      |                                                                      | reserva).                                                            |
+  2  | R6(2) flip           | Cargar un sistema (archivo o manual). Clic en "Matricial".           | Un clic invierte las zonas: solo una visible; el contenido mostrado  | UNVERIFIED
+     |                      |                                                                      | es exactamente el último sistema cargado.                            |
+  3  | R6(3)/R4.1-R4.2      | En "Matricial", volver a "Ecuaciones" y otra vez a "Matricial" sin   | Ningún re-render ni re-parseo al alternar; la barra de estado no     | UNVERIFIED
+     | no re-cargar         | cargar nada. Probar hidden-but-current: tras UNA carga, alternar     | cambia; al volver, el área oculta traía los datos frescos (switch    |
+     |                      | y verificar que ambas zonas muestran el mismo sistema.               | inmediato, sin recálculo).                                           |
+  4  | R6(4)/R7.2           | Con "Ecuaciones" y con "Matricial": alternar tipo/método (Directo,   | filaParametros aparece/desaparece IGUAL en ambos modos (Iterativo    | UNVERIFIED
+     |                      | Iterativo>Jacobi, Iterativo>SOR, Directo>Gauss).                     | muestra ε e iteraciones; SOR suma ω; Directo oculta la fila). El     |
+     |                      |                                                                      | selector de vista no interfiere.                                     |
+  5  | R6(5)/R5.1           | Cargar un sistema en "Matricial" y presionar "Limpiar". Re-abrir     | Las CINCO áreas quedan vacías (areaSistema, areaMatrizA,             | UNVERIFIED
+     |                      | "Matricial" para probar vaciado oculto.                              | areaVectorB, areaMatrizAumentada + resultado/procedimiento); el      |
+     |                      |                                                                      | selector muestra "Ecuaciones" seleccionado; al re-toggle, la zona    |
+     |                      |                                                                      | matricial está vacía (no stale).                                     |
+  6  | R6(6)/R1.2-R7.3        | Ir a "Matricial". Cargar un archivo y luego un sistema manual.       | El modo sigue "Matricial" (ninguna carga lo cambia); la matriz       | UNVERIFIED
+     |                      |                                                                      | aumentada muestra el sistema recién cargado; paneles de resultado    |
+     |                      |                                                                      | y procedimiento quedan limpios/deshabilitados (R5.1 en MATRICIAL).   |
+
+Extra sugerido (R3): cargar "pruebas txt" con magnitudes mezcladas (p. ej. 3e11 y 0.5 en una
+columna) y verificar que la matriz aumentada alinea las columnas a la derecha con la barra "|"
+ASCII, incluso en Notepad/copia fuera de la app (wrapText=false).
